@@ -1,0 +1,11 @@
+{
+  "name": "Kapi Spielberg by Piotr",
+  "description": "Zaawansowany profesjonalny edytor wideo SaaS z akceleracją GPU WebCodecs 4K, wielościeżkową osią czasu oraz chmurą Firestore.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

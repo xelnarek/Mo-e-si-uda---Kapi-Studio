@@ -1,0 +1,52 @@
+{
+  "id": "/",
+  "name": "Kapi-Studio By Piotr new",
+  "short_name": "Kapi-Studio",
+  "description": "Zaawansowany profesjonalny edytor wideo SaaS z akceleracją GPU WebCodecs 4K, wielościeżkową osią czasu oraz chmurą Firestore.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#121214",
+  "theme_color": "#121214",
+  "orientation": "any",
+  "lang": "pl",
+  "dir": "ltr",
+  "categories": [
+    "multimedia",
+    "video",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nowy Projekt",
+      "url": "/?action=new",
+      "description": "Otwórz nowy projekt montażu wideo"
+    },
+    {
+      "name": "Dysk Google",
+      "url": "/?tab=drive",
+      "description": "Importuj klipy z Dysku Google"
+    }
+  ]
+}
