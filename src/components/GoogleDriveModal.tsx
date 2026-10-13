@@ -531,7 +531,7 @@ export function GoogleDriveModal({ isOpen, onClose, onImportClips, existingClips
                   )}
 
                   <button
-                    onClick={() => handleLogin(false)}
+                    onClick={() => handleLogin(true)}
                     disabled={isLoggingIn}
                     className="btn-primary px-6 py-3 rounded-xl text-xs font-bold flex items-center gap-2.5 cursor-pointer shadow-lg disabled:opacity-50"
                   >
@@ -540,7 +540,7 @@ export function GoogleDriveModal({ isOpen, onClose, onImportClips, existingClips
                     ) : (
                       <GoogleDriveIcon className="w-4 h-4" />
                     )}
-                    <span>Zaloguj przez Google</span>
+                    <span>Zaloguj & Połącz z Dyskiem Google</span>
                   </button>
                 </div>
               ) : (

@@ -32,7 +32,7 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A2824] bg-[#0A0A0A]">
           <div className="flex items-center gap-2.5 text-[#D4AF37]">
             <Keyboard className="w-5 h-5" />
-            <h2 className="font-serif-luxury font-bold text-base tracking-wide">Skróty Klawiszowe Studio</h2>
+            <h2 className="font-bold text-base tracking-tight font-sans">Skróty Klawiszowe Studio</h2>
           </div>
           <button 
             onClick={onClose} 

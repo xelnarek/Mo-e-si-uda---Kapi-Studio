@@ -154,7 +154,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, delayMs = 
 // Executes with immediate model failover if the primary model is experiencing a 503/429 spike
 async function executeWithModelFallback<T>(
   taskFn: (modelName: string) => Promise<T>,
-  models: string[] = ['gemini-3.1-flash-lite', 'gemini-3.8-flash']
+  models: string[] = ['gemini-2.5-flash', 'gemini-2.5-pro']
 ): Promise<T> {
   let lastError: any = null;
   for (const model of models) {
@@ -502,7 +502,7 @@ app.post('/api/analyze-media', async (req, res) => {
           
           const modelResponse = await retryWithBackoff(() => 
             ai.models.generateContent({
-              model: 'gemini-3.1-flash-lite',
+              model: 'gemini-2.5-flash',
               contents: {
                 parts: [
                   { inlineData: { mimeType: itemMimeType, data: base64 } },
@@ -547,7 +547,7 @@ app.post('/api/analyze-media', async (req, res) => {
           
           const modelResponse = await retryWithBackoff(() => 
             ai.models.generateContent({
-              model: 'gemini-3.1-flash-lite',
+              model: 'gemini-2.5-flash',
               contents: {
                 parts: [
                   { inlineData: { mimeType: itemMimeType, data: base64 } },
@@ -682,7 +682,7 @@ Zwróć wynik jako JSON z polami:
           contents: prompt,
           config: schemaConfig
         }),
-        ['gemini-3.1-flash-lite', 'gemini-3.8-flash']
+        ['gemini-2.5-flash', 'gemini-2.5-pro']
       );
 
       const parsed = JSON.parse(response.text || '{}');
@@ -893,7 +893,7 @@ app.post('/api/drive/upload', async (req, res) => {
 app.post('/api/drive/upload-binary', upload.single('file'), async (req, res) => {
   try {
     const token = (req.body.accessToken as string) || (req.headers.authorization?.replace('Bearer ', ''));
-    if (!token) return res.status(401).json({ error: 'Wymagany token autoryzacji Google' });
+    if (!token) return res.status(401).json({ error: 'Wymagany token autoryzacji Google', requiresAuth: true });
 
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'Brak przesłanego pliku binarnego' });
@@ -929,7 +929,12 @@ app.post('/api/drive/upload-binary', upload.single('file'), async (req, res) => 
 
     if (!uploadRes.ok) {
       const errorText = await uploadRes.text();
-      return res.status(uploadRes.status).json({ error: `Błąd zapisu wideo na Google Drive: ${errorText}` });
+      const isAuthIssue = uploadRes.status === 401 || uploadRes.status === 403;
+      return res.status(uploadRes.status).json({ 
+        error: isAuthIssue ? 'INSUFFICIENT_SCOPE' : `Błąd zapisu wideo na Google Drive: ${errorText}`,
+        requiresAuth: isAuthIssue,
+        details: errorText 
+      });
     }
 
     const fileResult = await uploadRes.json();
@@ -948,25 +953,23 @@ app.post('/api/generate-cover', async (req, res) => {
     const validSizes = ["1K", "2K", "4K"];
     const imageSize = validSizes.includes(size) ? size : "1K";
 
-    const response = await retryWithBackoff(() => 
-      ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: {
-          parts: [
-            { text: prompt || "Piękna, artystyczna, kinowa kompozycja filmowa, profesjonalne oświetlenie sceniczne, wysmakowany kadr" }
-          ]
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: "16:9"
+    let response: any = null;
+    try {
+      response = await retryWithBackoff(() => 
+        ai.models.generateImages({
+          model: 'imagen-3.0-generate-002',
+          prompt: prompt || "Piękna, artystyczna, kinowa kompozycja filmowa, profesjonalne oświetlenie sceniczne, wysmakowany kadr",
+          config: {
+            numberOfImages: 1,
+            aspectRatio: "16:9",
+            outputMimeType: "image/jpeg"
           }
-        }
-      })
-    ).catch(err => {
+        })
+      );
+    } catch (err) {
       console.log("Przełączono na okładkę awaryjną (limit API obrazów).");
-      // Fallback: return a special flag or a generic high-quality cinema image URL
-      return { fallback: true };
-    });
+      response = { fallback: true };
+    }
 
     if (!response || ('fallback' in response)) {
       // Return a high quality public domain cinema placeholder
@@ -1013,7 +1016,7 @@ Użyj narzędzia Google Search, aby znaleźć najnowsze techniki i trendy. Odpow
 
     const response = await retryWithBackoff(() =>
       (ai.models.generateContent as any)({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         tools: [{ googleSearch: {} }],
         toolConfig: { includeServerSideToolInvocations: true },
@@ -1058,7 +1061,7 @@ Napisz wyłącznie czysty tekst po polsku, gotowy do odczytania przez profesjona
       try {
         const scriptRes = await retryWithBackoff(() => 
           ai.models.generateContent({
-            model: 'gemini-3.8-flash',
+            model: 'gemini-2.5-flash',
             contents: scriptPrompt
           })
         );
@@ -1068,12 +1071,12 @@ Napisz wyłącznie czysty tekst po polsku, gotowy do odczytania przez profesjona
       }
     }
 
-    // Call Gemini TTS model gemini-3.8-flash-lite-tts to convert text to spoken audio
+    // Call Gemini TTS model to convert text to spoken audio
     let audioBase64: string | null = null;
     try {
       const ttsResponse = await retryWithBackoff(() => 
         ai.models.generateContent({
-          model: 'gemini-3.8-flash-lite-tts',
+          model: 'gemini-2.5-flash',
           contents: {
             role: 'user',
             parts: [
@@ -1161,7 +1164,7 @@ Odpowiedz jako JSON z polami:
           contents: prompt,
           config: schemaConfig
         }),
-        ['gemini-3.1-flash-lite', 'gemini-3.8-flash']
+        ['gemini-2.5-flash', 'gemini-2.5-pro']
       );
       resultData = JSON.parse(response.text || '{}');
     } catch (e: any) {
@@ -1264,7 +1267,7 @@ ${JSON.stringify(clips.map((c: any, i: number) => ({
           contents: prompt,
           config: schemaConfig
         }),
-        ['gemini-3.1-flash-lite', 'gemini-3.8-flash']
+        ['gemini-2.5-flash', 'gemini-2.5-pro']
       );
       result = JSON.parse(response.text || '{}');
     } catch (err1: any) {
@@ -1300,6 +1303,137 @@ ${JSON.stringify(clips.map((c: any, i: number) => ({
     console.error('[AI Caption] Error:', err);
     if (err?.cause) console.error('[AI Caption] Cause:', err.cause?.message || err.cause);
     res.json({ captions: [] });
+  }
+});
+
+// // Inteligentna transkrypcja mowy na polskie napisy ze ścieżki dźwiękowej filmu
+app.post('/api/transcribe-audio-polish', async (req, res) => {
+  try {
+    const { audioBase64, mimeType = 'audio/wav', projectTitle = 'Film', durationSec = 10, clipsContext = [] } = req.body;
+    
+    if (audioBase64 && typeof audioBase64 === 'string' && audioBase64.length > 50) {
+      try {
+        const prompt = `Jesteś profesjonalnym systemem rozpoznawania mowy, analizy dialogów i automatycznym tłumaczem filmowym na język polski.
+Przeanalizuj dołączone autentyczne nagranie dźwiękowe z filmu "${projectTitle}".
+ZADANIE:
+1. Wykryj autentyczne słowa, kwestie dialogowe i wypowiedzi wypowiadane przez ludzi w tym nagraniu (dowolny język: polski, angielski, niemiecki, ukraiński, hiszpański, francuski itp.).
+2. AUTOMATYCZNY TŁUMACZ NA JĘZYK POLSKI:
+   - Jeśli mowa jest w języku obcym, natychmiast PRZETŁUMACZ każdą kwestię na naturalny, żywy i elegancki język polski (napisy kinowe PL).
+   - Jeśli mowa jest w języku polskim, zapisz ją z poprawną ortografią, interpunkcją i polskimi znakami diakrytycznymi (ą, ć, ę, ł, ń, ó, ś, ź, ż).
+3. Podziel wypowiedzi na czytelne, zwięzłe segmenty napisów (startTime i endTime w sekundach dopasowane do wypowiadanych słów).
+4. BARDZO WAŻNE: Jeśli w nagraniu NIE MA mowy ludzkiej (jest tylko cisza, szum tła, muzyka, dźwięki otoczenia, efekty dźwiękowe), zwróć PUSTĄ tablicę segments: [].
+POD ŻADNYM POZOREM NIE WYMYŚLAJ dialogów, nie twórz fikcyjnego scenariusza ani nie dopowiadaj słów, które nie padły w dźwięku!`;
+
+        const callGemini = async (modelName: string) => {
+          return ai.models.generateContent({
+            model: modelName,
+            contents: [
+              {
+                inlineData: {
+                  mimeType: mimeType || 'audio/wav',
+                  data: audioBase64
+                }
+              },
+              { text: prompt }
+            ],
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  segments: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        text: { type: Type.STRING },
+                        startTime: { type: Type.NUMBER },
+                        endTime: { type: Type.NUMBER },
+                        speaker: { type: Type.STRING }
+                      },
+                      required: ["text", "startTime", "endTime"]
+                    }
+                  }
+                },
+                required: ["segments"]
+              }
+            }
+          });
+        };
+
+        let response;
+        try {
+          response = await retryWithBackoff(() => callGemini('gemini-3.8-flash'));
+        } catch (mErr) {
+          console.warn('[Audio Transcribe] Fallback to gemini-2.5-flash:', mErr);
+          response = await retryWithBackoff(() => callGemini('gemini-2.5-flash'));
+        }
+
+        const parsed = JSON.parse(response.text || '{}');
+        if (Array.isArray(parsed.segments)) {
+          return res.json({ 
+            success: true, 
+            segments: parsed.segments, 
+            hasSpeech: parsed.segments.length > 0,
+            source: 'gemini_audio_transcription' 
+          });
+        }
+      } catch (geminiErr: any) {
+        console.warn('[Audio Transcribe] Gemini multimodal audio processing note:', geminiErr?.message || geminiErr);
+      }
+    }
+
+    // Jeśli brak audio lub brak wykrytej mowy w pliku - zwróć pustą tablicę bez zmyślania fikcyjnego scenariusza
+    return res.json({ 
+      success: true, 
+      segments: [], 
+      hasSpeech: false, 
+      message: 'Brak wykrytych wypowiedzi w ścieżce dźwiękowej filmu.' 
+    });
+  } catch (err: any) {
+    console.error('[Audio Transcribe] Error:', err);
+    res.json({ success: false, segments: [], hasSpeech: false, error: err.message });
+  }
+});
+
+// Szybki tłumacz dialogów w locie w czasie rzeczywistym (Live Dialogue Translator)
+app.post('/api/translate-dialogue', async (req, res) => {
+  try {
+    const { text, sourceLang = 'auto', targetLang = 'pl' } = req.body;
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.json({ success: true, translatedText: '' });
+    }
+
+    const prompt = `Jesteś profesjonalnym tłumaczem dialogów filmowych na język polski.
+Przetłumacz poniższą kwestię dialogową na naturalny, żywy i kinowy język polski (zgodny z duchem filmu i dialogów wideo).
+Jeśli tekst jest już w języku polskim, popraw jedynie ewentualną interpunkcję i formatowanie napisów.
+Zwróć WYŁĄCZNIE przetłumaczony tekst napisów, bez żadnych zbędnych komentarzy ani cudzysłowów.
+
+Tekst kwestii:
+"${text.trim()}"`;
+
+    let response;
+    try {
+      response = await retryWithBackoff(() =>
+        ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt
+        })
+      );
+    } catch {
+      response = await retryWithBackoff(() =>
+        ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt
+        })
+      );
+    }
+
+    const translated = response.text?.trim() || text;
+    res.json({ success: true, translatedText: translated, originalText: text });
+  } catch (err: any) {
+    console.warn('[Translate Dialogue Error]', err);
+    res.json({ success: false, translatedText: req.body?.text || '', error: err.message });
   }
 });
 
@@ -1391,7 +1525,7 @@ ${JSON.stringify(clips.map((c: any) => ({
     try {
       const response = await retryWithBackoff(() =>
         ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-2.5-flash',
           contents: prompt,
           config: schemaConfig
         }),
@@ -1404,7 +1538,7 @@ ${JSON.stringify(clips.map((c: any) => ({
       try {
         const fallbackRes = await retryWithBackoff(() =>
           ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite',
+            model: 'gemini-2.5-pro',
             contents: prompt,
             config: schemaConfig
           }),

@@ -1222,6 +1222,7 @@ export function StudioApp() {
               onOpenVoiceRecorder={() => setIsVoiceRecorderOpen(true)}
               onOpenBeatSync={() => setIsBeatSyncModalOpen(true)}
               onOpenAutoCaptions={() => setIsAutoCaptionsModalOpen(true)}
+              onUpdateProject={pushState}
             />
           </div>
 

@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
             <AlertTriangle className="w-10 h-10 text-red-500" />
           </div>
-          <h1 className="text-2xl font-serif-luxury text-white mb-2">Ups, wystąpił problem</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white mb-2 font-sans">Ups, wystąpił problem</h1>
           <p className="text-[#AAA69D] max-w-md mb-8">
             Napotkaliśmy nieoczekiwany błąd podczas renderowania aplikacji. 
             Twoje zmiany powinny być bezpieczne w lokalnej pamięci.

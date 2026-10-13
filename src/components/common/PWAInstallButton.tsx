@@ -41,9 +41,18 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     }
   }, []);
 
+  const getPublicAppUrl = () => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    if (origin.includes('ais-dev-')) {
+      return origin.replace('ais-dev-', 'ais-pre-');
+    }
+    return window.location.href;
+  };
+
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(getPublicAppUrl());
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
@@ -52,7 +61,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   };
 
   const handleOpenDirect = () => {
-    window.open(window.location.href, '_blank', 'noopener,noreferrer');
+    window.open(getPublicAppUrl(), '_blank', 'noopener,noreferrer');
   };
 
   const handleMainAction = async () => {

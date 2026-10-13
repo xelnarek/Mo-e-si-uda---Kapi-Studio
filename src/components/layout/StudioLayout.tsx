@@ -502,6 +502,28 @@ export function StudioLayout({
                 {autoSaveStatus === 'saving' ? 'Zapisywanie...' : 'Zapisano w chmurze'}
               </span>
             </div>
+
+            {/* Desktop Quick Nav Segmented Bar (Linear / Raycast Pro) */}
+            <div className="hidden xl:flex items-center bg-[#141416] border border-[#27272a] rounded-lg p-0.5 gap-0.5 ml-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onTabChange(item.id)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#272730] text-amber-400 font-bold border border-[#363640] shadow-xs'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1a1a20]'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Center: Project Title (Editable with smart max-width constraint) */}

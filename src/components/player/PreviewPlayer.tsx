@@ -28,6 +28,7 @@ import type { TimelineItem, MediaClip, TextLayer, AudioTrackItem, ColorGradingPr
 import { urlRegistry } from '../../core/media/urlRegistry';
 import { resolveClipMediaUrl, resolveAudioTrackUrl } from '../../core/media/mediaResolver';
 import { frameAccurateSeekCache } from '../../core/cache/FrameAccurateSeekCache';
+import { liveDialogueTranslator, type LiveDialogueCue } from '../../core/audio/liveDialogueTranslatorEngine';
 
 export type ScaleMode = 'fit' | 'fill' | '16:9' | '9:16' | '4:3' | 'original';
 
@@ -140,6 +141,14 @@ export function PreviewPlayer({
   const [activeColorGrade, setActiveColorGrade] = useState<ColorGradingPreset>(colorGrade);
   const [isLutDropdownOpen, setIsLutDropdownOpen] = useState(false);
   const [isCinemascope, setIsCinemascope] = useState(letterboxMode === 'cinemascope');
+  const [liveCue, setLiveCue] = useState<LiveDialogueCue | null>(null);
+
+  useEffect(() => {
+    const unsub = liveDialogueTranslator.subscribe((cue) => {
+      setLiveCue(cue);
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     setActiveColorGrade(colorGrade);
@@ -435,9 +444,9 @@ export function PreviewPlayer({
 
   const getTextStyleClass = (style: string) => {
     switch (style) {
-      case 'elegant': return 'font-serif-luxury tracking-wider';
+      case 'elegant': return 'font-serif tracking-wider';
       case 'minimalist': return 'font-mono uppercase tracking-widest font-light';
-      case 'cinematic': return 'font-serif-luxury font-bold drop-shadow-2xl';
+      case 'cinematic': return 'font-sans font-black tracking-tight drop-shadow-2xl';
       default: return 'font-sans font-medium drop-shadow-md';
     }
   };
@@ -445,18 +454,23 @@ export function PreviewPlayer({
   // Determine aspect ratio class / style based on scaleMode
   const getStageAspectRatioStyle = () => {
     switch (scaleMode) {
-      case '16:9': return { aspectRatio: '16/9' };
-      case '9:16': return { aspectRatio: '9/16', maxHeight: '100%' };
-      case '4:3': return { aspectRatio: '4/3' };
+      case '16:9': return { aspectRatio: '16/9', width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' };
+      case '9:16': return { aspectRatio: '9/16', width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' };
+      case '4:3': return { aspectRatio: '4/3', width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' };
       case 'original':
         if (activeMedia?.width && activeMedia?.height) {
-          return { aspectRatio: `${activeMedia.width}/${activeMedia.height}` };
+          return { aspectRatio: `${activeMedia.width}/${activeMedia.height}`, width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' };
         }
-        return { aspectRatio: '16/9' };
+        return { aspectRatio: '16/9', width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' };
       case 'fill':
-      case 'fit':
-      default:
         return { width: '100%', height: '100%' };
+      case 'fit':
+      default: {
+        const isVertical = activeMedia?.aspectRatio === '9:16' || (activeMedia?.height && activeMedia?.width && activeMedia.height > activeMedia.width);
+        const isSquare = activeMedia?.aspectRatio === '1:1' || (activeMedia?.height && activeMedia?.width && Math.abs(activeMedia.width - activeMedia.height) < 10);
+        const ratio = isVertical ? '9/16' : (isSquare ? '1/1' : '16/9');
+        return { aspectRatio: ratio, width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' };
+      }
     }
   };
 
@@ -712,7 +726,7 @@ export function PreviewPlayer({
                 <Film className="w-6 h-6" />
               </span>
               <div className="space-y-1">
-                <p className="text-sm text-[#F2EFE8] font-medium font-serif-luxury">
+                <p className="text-sm text-[#F2EFE8] font-semibold font-sans">
                   {timelineItems.length === 0 ? "Brak materiałów na osi czasu" : "Głowica poza zakresem ujęć"}
                 </p>
                 <p className="text-[11px] text-[#888] max-w-xs">
@@ -882,19 +896,59 @@ export function PreviewPlayer({
           {activeTexts.map(layer => (
             <div 
               key={layer.id}
-              className={`absolute transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none transition-opacity duration-300 px-4 py-1 rounded ${getTextStyleClass(layer.style)}`}
+              className={`absolute transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none transition-opacity duration-300 px-4 py-2 rounded-2xl z-20 font-sans font-bold select-none ${getTextStyleClass(layer.style)}`}
               style={{ 
                 left: `${layer.position.x * 100}%`, 
                 top: `${layer.position.y * 100}%`,
-                color: layer.color,
-                backgroundColor: layer.backgroundColor || 'transparent',
-                fontSize: `${Math.max(1.1, layer.fontSize * 1.1)}rem`,
-                textShadow: '0 2px 14px rgba(0,0,0,0.95)'
+                color: layer.color || '#ffffff',
+                backgroundColor: layer.backgroundColor || 'rgba(0, 0, 0, 0.82)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(251, 191, 36, 0.35)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.85), 0 0 16px rgba(251, 191, 36, 0.2)',
+                fontSize: `clamp(14px, ${Math.min(26, Math.max(14, (layer.fontSize && layer.fontSize > 10 ? layer.fontSize * 0.72 : (layer.fontSize || 18))))}px, 24px)`,
+                textShadow: '0 2px 14px rgba(0,0,0,0.95), 0 0 10px rgba(251, 191, 36, 0.35)',
+                maxWidth: '90%',
+                lineHeight: 1.35
               }}
             >
+              {layer.subtitleSpeaker && (
+                <span className="block text-[9px] font-mono uppercase tracking-widest text-amber-300/90 mb-0.5">
+                  {layer.subtitleSpeaker}
+                </span>
+              )}
               {layer.text}
             </div>
           ))}
+
+          {/* Live AI Dialogue & Translation Banner (When speech is detected during playback) */}
+          {liveCue && activeTexts.length === 0 && (
+            <div 
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none transition-all duration-150 px-4 py-2 rounded-2xl z-30 font-sans select-none animate-in fade-in zoom-in-95"
+              style={{ 
+                left: '50%', 
+                top: '84%',
+                background: 'rgba(9, 9, 13, 0.88)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(0, 229, 204, 0.45)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 229, 204, 0.25)',
+                maxWidth: '88%'
+              }}
+            >
+              <div className="flex items-center justify-center gap-1.5 mb-1 text-[9px] font-mono text-[#00e5cc] tracking-wider uppercase font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00e5cc] animate-pulse" />
+                <span>AI DIALOG & TŁUMACZ PL</span>
+              </div>
+              <span 
+                className="text-white font-extrabold tracking-wide"
+                style={{
+                  fontSize: 'clamp(14px, 2.2vw, 22px)',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.95), 0 0 8px rgba(0,229,204,0.35)'
+                }}
+              >
+                {liveCue.translatedText || liveCue.originalText}
+              </span>
+            </div>
+          )}
 
           {/* Safe Zones Broadcast Overlay */}
           {showSafeZones && (

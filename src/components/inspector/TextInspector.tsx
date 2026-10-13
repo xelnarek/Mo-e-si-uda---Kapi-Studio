@@ -17,7 +17,7 @@ export function TextInspector({ layer, onUpdate }: TextInspectorProps) {
       
       {/* Header */}
       <div className="p-4 border-b border-[#2A2824] shrink-0 bg-[#0A0A0A]">
-        <h3 className="text-[#D4AF37] font-serif-luxury flex items-center gap-2">
+        <h3 className="text-[#D4AF37] font-bold text-sm tracking-wide font-sans flex items-center gap-2">
           <Type className="w-4 h-4" /> Inspektor Tekstu
         </h3>
       </div>

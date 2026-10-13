@@ -303,9 +303,9 @@ export function AiMontageSummaryPanel({
   };
 
   return (
-    <div className="w-full bg-[#18181c] border border-[#26262b] rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden animate-fadeIn space-y-5">
+    <div className="w-full glass-card border border-zinc-800/80 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden animate-fadeIn space-y-5 bg-zinc-900/60 backdrop-blur-xl">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#26262b] pb-4 relative z-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-4 relative z-10">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 relative">
@@ -316,17 +316,17 @@ export function AiMontageSummaryPanel({
               AUDYT PRZEDEKSPORTOWY • PRE-FLIGHT MASTER
             </span>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2.5 font-sans">
             <Film className="w-5 h-5 text-[#facc15]" />
             Panel Podsumowujący: Montaż Studio
           </h2>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-zinc-400 font-sans">
             Kompletny scenariusz produkcji ({totalClipsCount} ujęć, {formatTime(totalDurationSec)}) ze sprzętową akceleracją GPU.
           </p>
         </div>
 
         {/* Status Pill */}
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#222228] border border-[#2e2e36] text-zinc-200 text-xs font-bold font-mono self-start sm:self-auto shadow-sm">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-950/60 border border-zinc-800/80 text-zinc-200 text-xs font-bold font-mono self-start sm:self-auto shadow-sm">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>GOTOWY DO RENDEROWANIA MASTER</span>
         </div>
@@ -337,10 +337,10 @@ export function AiMontageSummaryPanel({
         <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40 flex items-start gap-3 relative z-10">
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <h4 className="text-xs font-bold text-amber-200 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-amber-200 uppercase tracking-wider font-sans">
               Złożony Projekt 4K
             </h4>
-            <p className="text-xs text-amber-100/80 leading-relaxed">
+            <p className="text-xs text-amber-100/80 leading-relaxed font-sans">
               Projekt zawiera ponad 20 ujęć w rozdzielczości 4K. Renderowanie sprzętowe WebCodecs wykorzysta akcelerację GPU. Nie zamykaj karty przeglądarki podczas generowania pliku.
             </p>
           </div>
@@ -349,7 +349,7 @@ export function AiMontageSummaryPanel({
 
       {/* Real-time Render Estimation Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
-        <div className="p-3.5 rounded-xl bg-[#222228] border border-[#2e2e36] space-y-1">
+        <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 space-y-1 backdrop-blur-sm">
           <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400">
             <Clock className="w-3.5 h-3.5 text-[#facc15]" />
             <span>Czas Renderu:</span>
@@ -362,7 +362,7 @@ export function AiMontageSummaryPanel({
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-[#222228] border border-[#2e2e36] space-y-1">
+        <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 space-y-1 backdrop-blur-sm">
           <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400">
             <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
             <span>Szacowany Rozmiar:</span>
@@ -375,7 +375,7 @@ export function AiMontageSummaryPanel({
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-[#222228] border border-[#2e2e36] space-y-1">
+        <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 space-y-1 backdrop-blur-sm">
           <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400">
             <Cpu className="w-3.5 h-3.5 text-[#00e5cc]" />
             <span>Klatki Łącznie:</span>
@@ -388,7 +388,7 @@ export function AiMontageSummaryPanel({
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-[#222228] border border-[#2e2e36] space-y-1">
+        <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60 space-y-1 backdrop-blur-sm">
           <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400">
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
             <span>Enkoder:</span>
@@ -403,7 +403,7 @@ export function AiMontageSummaryPanel({
       </div>
 
       {/* Soundwave & Feature Highlights */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#26262b] text-[11px] font-mono relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-zinc-800/80 text-[11px] font-mono relative z-10">
         <div className="flex items-center gap-2 text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
           <span>Akceleracja WebCodecs</span>
@@ -424,7 +424,7 @@ export function AiMontageSummaryPanel({
 
       {/* GPU STATUS BANNER */}
       {gpuStatusMsg && (
-        <div className="p-3.5 rounded-xl bg-[#222228] border border-[#00e5cc]/50 text-xs font-mono text-[#00e5cc] flex items-center gap-2.5 animate-pulse relative z-10">
+        <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-[#00e5cc]/50 text-xs font-mono text-[#00e5cc] flex items-center gap-2.5 animate-pulse relative z-10">
           <Zap className="w-4 h-4 text-[#00e5cc] animate-spin" />
           <span>{gpuStatusMsg}</span>
         </div>

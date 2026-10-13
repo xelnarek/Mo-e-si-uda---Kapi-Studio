@@ -17,7 +17,7 @@ export function AudioInspector({ track, onUpdate }: AudioInspectorProps) {
       
       {/* Header */}
       <div className="p-4 border-b border-[#2A2824] shrink-0 bg-[#0A0A0A]">
-        <h3 className="text-[#D4AF37] font-serif-luxury flex items-center gap-2">
+        <h3 className="text-[#D4AF37] font-bold text-sm tracking-wide font-sans flex items-center gap-2">
           <Music className="w-4 h-4" /> Inspektor Audio
         </h3>
         <p className="text-xs text-[#AAA69D] mt-1 font-mono truncate">{track.name}</p>

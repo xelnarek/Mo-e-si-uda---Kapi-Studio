@@ -2335,13 +2335,23 @@ export class VideoExportService {
       );
     } else {
       // AUTO (Smart AI GPU Negotiation)
+      const is4K = width >= 3840 || height >= 2160;
+      if (is4K) {
+        candidateList.push(
+          { codec: 'av01.0.12M.08', family: 'av1', label: 'AV1 Master 4K (Sprzętowy GPU)', preferredContainer: requestedContainer === 'webm' ? 'webm' : 'mp4', requireHardware: true },
+          { codec: 'hvc1.1.6.L153.B0', family: 'hevc', label: 'H.265 / HEVC 4K (Sprzętowy Apple/NVENC)', preferredContainer: 'mp4', requireHardware: true },
+          { codec: 'avc1.640033', family: 'avc', label: 'H.264 High Profile 5.1 (4K Sprzętowy)', preferredContainer: 'mp4', requireHardware: true }
+        );
+      }
       candidateList.push(
         { codec: 'av01.0.08M.08', family: 'av1', label: 'AV1 Master (Sprzętowy GPU)', preferredContainer: requestedContainer === 'webm' ? 'webm' : 'mp4', requireHardware: true },
         { codec: 'hvc1.1.6.L120.B0', family: 'hevc', label: 'H.265 / HEVC (Sprzętowy Apple/GPU)', preferredContainer: 'mp4', requireHardware: true },
         { codec: 'avc1.640033', family: 'avc', label: 'H.264 High Profile 5.1 (Sprzętowy GPU)', preferredContainer: 'mp4', requireHardware: true },
+        { codec: 'avc1.64002a', family: 'avc', label: 'H.264 High Profile 4.2 (Sprzętowy 60fps)', preferredContainer: 'mp4', requireHardware: true },
         { codec: 'avc1.640028', family: 'avc', label: 'H.264 High Profile 4.0 (Sprzętowy GPU)', preferredContainer: 'mp4', requireHardware: true },
         { codec: 'vp09.00.41.08', family: 'vp9', label: 'VP9 WebM (Sprzętowy)', preferredContainer: 'webm', requireHardware: true },
-        { codec: 'avc1.640028', family: 'avc', label: 'H.264 High Profile', preferredContainer: 'mp4' },
+        { codec: 'avc1.640028', family: 'avc', label: 'H.264 High Profile (Optymalizowany)', preferredContainer: 'mp4' },
+        { codec: 'avc1.4D4028', family: 'avc', label: 'H.264 Main Profile', preferredContainer: 'mp4' },
         { codec: 'avc1.420028', family: 'avc', label: 'H.264 Baseline', preferredContainer: 'mp4' }
       );
     }

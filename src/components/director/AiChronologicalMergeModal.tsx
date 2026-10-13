@@ -304,25 +304,43 @@ export function AiChronologicalMergeModal({
           return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
         });
 
-        const categoriesList: ClipCategory[] = ['preparations', 'ceremony', 'congratulations', 'first_dance', 'toast', 'party', 'cake', 'ending'];
+        // Universal, intelligent cinematic acts for all film genres (Vlog, Cinema, Event, Travel, Commercial)
+        const universalCategories: ClipCategory[] = ['opening', 'intro', 'a_roll', 'b_roll', 'scenery', 'action', 'climax', 'ending'];
 
         const fallbackSeq: SequencedItem[] = sorted.map((c, i) => {
-          const catIdx = Math.min(categoriesList.length - 1, Math.floor((i / Math.max(1, sorted.length)) * categoriesList.length));
-          const cat = c.category && c.category !== 'unassigned' ? c.category : categoriesList[catIdx];
+          const catIdx = Math.min(universalCategories.length - 1, Math.floor((i / Math.max(1, sorted.length)) * universalCategories.length));
+          const cat = c.category && c.category !== 'unassigned' ? c.category : universalCategories[catIdx];
           const cleanTitle = generatePolishSceneTitle(c.name, cat, i);
+
+          // Intelligent transition assignment based on position and pacing
+          let chosenTransition = 'dissolve';
+          if (i === 0) {
+            chosenTransition = 'dip_black';
+          } else if (i === sorted.length - 1) {
+            chosenTransition = 'fade';
+          } else if (pacing === 'dynamic') {
+            chosenTransition = i % 3 === 0 ? 'zoom' : (i % 2 === 0 ? 'cut' : 'dissolve');
+          } else if (pacing === 'emotional') {
+            chosenTransition = i % 2 === 0 ? 'dip_white' : 'dissolve';
+          } else {
+            chosenTransition = i % 4 === 0 ? 'light_leak' : 'dissolve';
+          }
+
+          const timeOfDay = i < sorted.length * 0.25 ? 'morning' : (i < sorted.length * 0.65 ? 'afternoon' : (i < sorted.length * 0.85 ? 'golden_hour' : 'evening'));
+
           return {
             clipId: c.id,
             clip: c,
             targetOrder: i + 1,
             smartTitle: cleanTitle,
-            subtitleCaption: `Niezapomniana chwila – ${cleanTitle}`,
+            subtitleCaption: `Ujęcie filmowe – ${cleanTitle}`,
             category: cat,
-            emotion: 'romantic',
-            timeOfDay: i < sorted.length * 0.3 ? 'morning' : (i < sorted.length * 0.7 ? 'afternoon' : 'evening'),
-            transition: i === 0 ? 'dip_black' : 'dissolve',
+            emotion: pacing === 'dynamic' ? 'energetic' : (pacing === 'emotional' ? 'nostalgic' : 'cinematic'),
+            timeOfDay,
+            transition: chosenTransition,
             trimStart: applySmartTrim ? 0.5 : 0,
             trimEnd: Math.max(0.5, c.duration - (applySmartTrim ? 0.5 : 0)),
-            directorReason: 'Dopasowano chronologicznie według czasu nagrania.',
+            directorReason: `Precyzyjnie dopasowano chronologicznie (${timeOfDay}, ${cat.toUpperCase()}).`,
             includeInTimeline: true
           };
         });
@@ -760,24 +778,24 @@ export function AiChronologicalMergeModal({
                 </p>
               </div>
 
-              {/* Dodatek 5: Napisy scen */}
+              {/* Dodatek 5: Polskie Napisy Automatycznie z Audio Filmu */}
               <div className={`p-3 rounded-xl border transition-all ${
-                includeSubtitles ? 'bg-amber-500/10 border-amber-500/40' : 'bg-zinc-950/60 border-zinc-800/40 opacity-60'
+                includeSubtitles ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-zinc-950/60 border-zinc-800/40 opacity-60'
               }`}>
                 <label className="flex items-center justify-between cursor-pointer mb-2">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <TypeIcon className="w-3.5 h-3.5 text-amber-400" />
-                    Kinowe napisy / podpisy scen
+                    <TypeIcon className="w-3.5 h-3.5 text-emerald-400" />
+                    Automatyczne polskie napisy (z mowy / audio filmu)
                   </span>
                   <input
                     type="checkbox"
                     checked={includeSubtitles}
                     onChange={(e) => setIncludeSubtitles(e.target.checked)}
-                    className="accent-amber-500 w-4 h-4 rounded cursor-pointer"
+                    className="accent-emerald-500 w-4 h-4 rounded cursor-pointer"
                   />
                 </label>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Automatycznie generuje podpisy narracyjne na dole ekranu, zsynchronizowane z każdym ujęciem.
+                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                  Automatycznie dopasowuje polskie napisy na podstawie ścieżki dźwiękowej filmu. Działa zarówno na podglądzie montażu (ON/OFF), jak i przy finalnym scalaniu i renderowaniu pliku MP4.
                 </p>
               </div>
 
@@ -1214,7 +1232,7 @@ export function AiChronologicalMergeModal({
               
               {/* Caption Overlay */}
               <div className="absolute bottom-6 inset-x-6 text-center pointer-events-none">
-                <span className="bg-black/75 backdrop-blur-sm border border-white/10 px-4 py-1.5 rounded-lg text-xs md:text-sm font-serif-luxury text-white italic drop-shadow-md inline-block max-w-lg">
+                <span className="bg-black/75 backdrop-blur-sm border border-white/10 px-4 py-1.5 rounded-lg text-xs md:text-sm font-sans font-medium text-white italic drop-shadow-md inline-block max-w-lg">
                   "{previewClip.caption}"
                 </span>
               </div>

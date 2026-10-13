@@ -41,6 +41,7 @@ export interface CompositeFrameParams {
   transitionOut?: TransitionType;
   transitionDuration?: number;
   textLayers?: TextLayer[];
+  subtitlesEnabled?: boolean;
   currentTimeSec?: number;
   letterbox?: string;
   watermark?: { enabled: boolean; text: string; position: string; opacity: number };
@@ -210,6 +211,10 @@ export class FrameCompositor {
     // 5. Draw Subtitles / Text Layers (Skip caption/subtitle/lower_third if title card or outro card is occupying the screen to prevent overlap)
     if (params.textLayers && params.textLayers.length > 0) {
       for (const textLayer of params.textLayers) {
+        // If subtitles are explicitly turned OFF by the user, skip caption & subtitle tracks
+        if (params.subtitlesEnabled === false && (textLayer.type === 'caption' || textLayer.type === 'subtitle')) {
+          continue;
+        }
         if ((isTitleCardActive || isOutroCardActive) && (textLayer.type === 'caption' || textLayer.type === 'subtitle' || textLayer.type === 'lower_third')) {
           continue;
         }

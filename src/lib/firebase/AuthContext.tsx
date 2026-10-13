@@ -59,9 +59,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loginPromise = (async () => {
       try {
         const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({
-          prompt: 'select_account'
-        });
+        
+        // Always include drive.file scope so video uploads and project saving to Google Drive work seamlessly
+        provider.addScope('https://www.googleapis.com/auth/drive.file');
+        
+        // If user wants to browse/list existing drive files, also add readonly scope
+        if (withDriveScopes) {
+          provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+          provider.setCustomParameters({
+            prompt: 'select_account consent',
+            access_type: 'offline'
+          });
+        } else {
+          provider.setCustomParameters({
+            prompt: 'select_account'
+          });
+        }
 
         // Always perform standard high-reliability Firebase Google Auth
         const result = await signInWithPopup(auth, provider);
@@ -78,7 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const userName = result.user.displayName || result.user.email || 'Użytkownik';
         if (typeof window !== 'undefined' && (window as any).showStudioToast) {
-          (window as any).showStudioToast(`Zalogowano pomyślnie jako ${userName}! Synchronizacja w chmurze Firestore jest aktywna.`, 'success');
+          const driveMsg = withDriveScopes || token ? ' Dostęp do Dysku Google jest aktywny.' : '';
+          (window as any).showStudioToast(`Zalogowano pomyślnie jako ${userName}! Synchronizacja w chmurze Firestore jest aktywna.${driveMsg}`, 'success');
         }
 
         return token;

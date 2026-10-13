@@ -346,7 +346,7 @@ export function VoiceRecorderModal({
             {activeTab === 'mic' ? <Mic className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
           </div>
           <div>
-            <h3 className="text-base font-bold text-white font-serif-luxury tracking-wide">
+            <h3 className="text-base font-bold text-white font-sans tracking-tight">
               {activeTab === 'mic' ? 'Nagranie Własnego Głosu / Przysięgi' : 'Wgraj Własny Dźwięk / Muzykę MP3'}
             </h3>
             <p className="text-xs font-sans-modern opacity-75 mt-0.5">

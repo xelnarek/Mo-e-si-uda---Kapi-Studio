@@ -11,9 +11,13 @@ import {
   Smartphone, 
   Laptop, 
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  HardDrive,
+  CheckCircle2,
+  Monitor
 } from 'lucide-react';
 import { ProjectState } from '../../types/project';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -31,13 +35,15 @@ export function ShareModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [appUrl, setAppUrl] = useState('');
-  const [activeTab, setActiveTab] = useState<'link' | 'project' | 'qr'>('link');
+  const [activeTab, setActiveTab] = useState<'link' | 'install' | 'qr' | 'project'>('link');
+  const { isInstallable, isInstalled, isIOS, install: installPWA } = usePWAInstall();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Use clean window URL or fallback
-      const url = window.location.origin;
-      setAppUrl(url);
+      const origin = window.location.origin;
+      // Convert ais-dev to ais-pre so public share and QR code work on any device/phone
+      const cleanUrl = origin.includes('ais-dev-') ? origin.replace('ais-dev-', 'ais-pre-') : origin;
+      setAppUrl(cleanUrl);
     }
   }, [isOpen]);
 
@@ -105,7 +111,7 @@ export function ShareModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
       <div 
-        className="relative w-full max-w-md bg-[#18181c] border border-[#2e2e36] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slideUp text-zinc-100"
+        className="relative w-full max-w-lg bg-[#18181c] border border-[#2e2e36] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slideUp text-zinc-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -115,8 +121,8 @@ export function ShareModal({
               <Share2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white font-sans">Udostępnij Aplikację & Projekt</h2>
-              <p className="text-[10px] text-zinc-400 font-mono">Dostęp przez przeglądarkę, smartfon i chmurę</p>
+              <h2 className="text-sm font-bold text-white font-sans">Udostępnij & Pobierz Aplikację</h2>
+              <p className="text-[10px] text-zinc-400 font-mono">Dostęp przez przeglądarkę, instalator PWA, smartfon i chmurę</p>
             </div>
           </div>
           <button
@@ -131,45 +137,57 @@ export function ShareModal({
         <div className="flex border-b border-[#26262b] bg-[#141416]/50 p-1.5 gap-1 text-xs">
           <button
             onClick={() => setActiveTab('link')}
-            className={`flex-1 py-1.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'link'
                 ? 'bg-[#282830] text-amber-400 font-semibold shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>Link do Aplikacji</span>
+            <span className="truncate">Link Publiczny</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('install')}
+            className={`flex-1 py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'install'
+                ? 'bg-[#282830] text-[#00e5cc] font-semibold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="truncate">Pobierz Aplikację</span>
           </button>
 
           <button
             onClick={() => setActiveTab('qr')}
-            className={`flex-1 py-1.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'qr'
                 ? 'bg-[#282830] text-amber-400 font-semibold shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <QrCode className="w-3.5 h-3.5" />
-            <span>Kod QR na Telefon</span>
+            <span className="truncate">Kod QR</span>
           </button>
 
           {project && (
             <button
               onClick={() => setActiveTab('project')}
-              className={`flex-1 py-1.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'project'
                   ? 'bg-[#282830] text-amber-400 font-semibold shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Projekt JSON</span>
+              <span className="truncate">Projekt</span>
             </button>
           )}
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
           {activeTab === 'link' && (
             <div className="space-y-3">
               <div>
@@ -236,6 +254,82 @@ export function ShareModal({
                 <p className="text-[10px] text-zinc-500 leading-relaxed">
                   Każdy z tym linkiem może od razu uruchomić studio montażu, wczytać klipy 4K lub synchronizować projekty z Firebase.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'install' && (
+            <div className="space-y-3">
+              {isInstalled ? (
+                <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-white">Aplikacja PWA jest już zainstalowana!</p>
+                    <p className="text-[11px] text-zinc-400">Pracujesz w natywnym trybie standalone z pełną akceleracją sprzętową GPU.</p>
+                  </div>
+                </div>
+              ) : isInstallable ? (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/50 to-indigo-950/50 border border-cyan-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-white">Zainstaluj Kapi-Studio 1-kliknięciem</p>
+                    <p className="text-[11px] text-zinc-300">Natywna aplikacja bez ramek przeglądarki i praca offline.</p>
+                  </div>
+                  <button
+                    onClick={() => installPWA()}
+                    className="w-full sm:w-auto px-4 py-2 bg-[#00e5cc] hover:bg-[#14f3db] text-black font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
+                  >
+                    <Download className="w-4 h-4 stroke-[2.5]" />
+                    <span>Zainstaluj teraz</span>
+                  </button>
+                </div>
+              ) : null}
+
+              {/* Device Guidelines */}
+              <div className="space-y-2.5 text-xs">
+                {/* Android / Poco F6 */}
+                <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a] space-y-1">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-400 text-xs">
+                    <Smartphone className="w-4 h-4 shrink-0" />
+                    <span>Xiaomi Poco F6 / Smartfony Android (Chrome)</span>
+                  </div>
+                  <p className="text-zinc-300 text-[11px] leading-relaxed">
+                    W Google Chrome dotknij menu <strong>trzech kropek (⋮)</strong> i wybierz <strong>„Zainstaluj aplikację”</strong> lub <strong>„Dodaj do ekranu głównego”</strong>.
+                  </p>
+                </div>
+
+                {/* PC / Desktop */}
+                <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a] space-y-1">
+                  <div className="flex items-center gap-2 font-semibold text-cyan-400 text-xs">
+                    <Monitor className="w-4 h-4 shrink-0" />
+                    <span>Komputer PC / Laptop (Chrome, Edge, Brave)</span>
+                  </div>
+                  <p className="text-zinc-300 text-[11px] leading-relaxed">
+                    Kliknij ikonę <strong>instalacji (ekran ze strzałką)</strong> po prawej stronie paska adresu URL w Chrome/Edge.
+                  </p>
+                </div>
+
+                {/* iOS */}
+                {isIOS && (
+                  <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a] space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-purple-400 text-xs">
+                      <Sparkles className="w-4 h-4 shrink-0" />
+                      <span>iPhone / iPad (Apple Safari)</span>
+                    </div>
+                    <p className="text-zinc-300 text-[11px] leading-relaxed">
+                      Dotknij <strong>Udostępnij</strong> (kwadrat ze strzałką w górę), a następnie <strong>„Do ekranu początkowego”</strong>.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-[#26262b]">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#22222a] hover:bg-[#2c2c36] border border-[#2e2e36] text-xs font-semibold text-zinc-200 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{copiedLink ? 'Skopiowano link!' : 'Kopiuj link instalacji'}</span>
+                </button>
               </div>
             </div>
           )}

@@ -27,7 +27,7 @@ export const OfflineIndicator: React.FC = () => {
           <WifiOff className="w-4 h-4 text-amber-300" />
         </div>
         <div>
-          <p className="font-bold font-serif-luxury text-sm flex items-center gap-1.5">
+          <p className="font-bold text-sm flex items-center gap-1.5 font-sans">
             <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
             {!isOnline ? 'Tryb Offline Aktywny' : 'Oczekiwanie na Sync'}
           </p>

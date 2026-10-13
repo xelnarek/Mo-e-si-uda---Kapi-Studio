@@ -823,6 +823,7 @@ export class WebCodecsMp4RenderProvider implements IRenderProvider {
             transitionOut: transOutType,
             transitionDuration: activeItem?.transitionDuration,
             textLayers: project.textLayers,
+            subtitlesEnabled: project.settings?.subtitlesSettings?.enabled !== false,
             currentTimeSec: currentTime,
             letterbox: project.settings?.letterbox,
             sessionId

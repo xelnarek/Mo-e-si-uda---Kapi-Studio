@@ -132,7 +132,7 @@ export function ChaptersManager({
       <div className="flex items-center justify-between pb-3 border-b border-[#2A2824]">
         <div className="flex items-center gap-2 text-[#D4AF37]">
           <Bookmark className="w-4 h-4" />
-          <h3 className="font-serif-luxury font-bold text-sm text-[#F2EFE8]">Rozdziały i Akty Filmowe</h3>
+          <h3 className="font-bold text-sm text-[#F2EFE8] font-sans">Rozdziały i Akty Filmowe</h3>
         </div>
         
         <button

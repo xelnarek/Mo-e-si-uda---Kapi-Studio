@@ -195,24 +195,39 @@ export const EasterEggModal: React.FC<EasterEggModalProps> = ({ isOpen, onClose 
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-2xl animate-fadeIn select-none overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-2xl animate-fadeIn select-none overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       {/* Dynamic Ambient Glow Behind Modal */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/15 rounded-full blur-[100px] animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
         
         {/* Floating animated ambient icons */}
-        <div className="absolute top-12 left-10 text-3xl opacity-60 animate-bounce" style={{ animationDuration: '3.2s' }}>
-          🦫✨
+        <div className="absolute top-12 left-10 p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 opacity-75 animate-bounce shadow-lg shadow-amber-500/10" style={{ animationDuration: '3.2s' }}>
+          <Sparkles className="w-6 h-6" />
         </div>
-        <div className="absolute bottom-16 right-12 text-4xl opacity-60 animate-bounce" style={{ animationDuration: '2.8s' }}>
-          🎬🦫
+        <div className="absolute bottom-16 right-12 p-2.5 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-300 opacity-75 animate-bounce shadow-lg shadow-teal-500/10" style={{ animationDuration: '2.8s' }}>
+          <Film className="w-7 h-7" />
         </div>
-        <div className="absolute top-20 right-20 text-3xl opacity-50 animate-pulse">
-          🍊🍵
+        <div className="absolute top-20 right-20 p-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 opacity-70 animate-pulse shadow-lg shadow-amber-500/10">
+          <Award className="w-6 h-6" />
         </div>
       </div>
 

@@ -279,7 +279,8 @@ class ThumbnailCache {
   }
 
   /**
-   * Core frame extractor from video URL: handles offscreen video lifecycle, seeking, and canvas capture
+   * Core frame extractor from video URL: handles offscreen video lifecycle, seeking,
+   * ImageBitmap frame decoding, and OffscreenCanvas non-blocking background rasterization.
    */
   private async extractFrameFromVideoUrl(
     mediaUrl: string,
@@ -315,34 +316,83 @@ class ThumbnailCache {
         video.currentTime = safeTime;
       };
 
-      video.onseeked = () => {
+      video.onseeked = async () => {
         try {
-          const canvas = document.createElement('canvas');
           const aspect = (video.videoHeight || 9) / (video.videoWidth || 16);
-          canvas.width = targetW;
-          canvas.height = Math.round(targetW * aspect) || targetH;
+          const calculatedH = Math.round(targetW * aspect) || targetH;
 
-          const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
-          if (!ctx) {
-            clearTimeout(timeoutId);
-            cleanup();
-            resolve(null);
-            return;
+          // 1. Asynchronously decode frame using ImageBitmap off the DOM thread
+          let bitmap: ImageBitmap | null = null;
+          if (typeof createImageBitmap === 'function') {
+            try {
+              bitmap = await createImageBitmap(video, {
+                resizeWidth: targetW,
+                resizeHeight: calculatedH,
+                resizeQuality: 'medium'
+              });
+            } catch {
+              try {
+                bitmap = await createImageBitmap(video);
+              } catch {
+                bitmap = null;
+              }
+            }
           }
 
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          let blob: Blob | null = null;
 
-          canvas.toBlob((blob) => {
-            clearTimeout(timeoutId);
-            cleanup();
-            if (blob) {
-              const url = urlRegistry.create(blob);
-              resolve({ url, blob });
-            } else {
-              resolve(null);
+          // 2. Offload rasterization & encoding to hardware-accelerated OffscreenCanvas
+          if (typeof OffscreenCanvas !== 'undefined') {
+            try {
+              const offscreen = new OffscreenCanvas(targetW, calculatedH);
+              const ctx = offscreen.getContext('2d', { alpha: false, desynchronized: true });
+              if (ctx) {
+                if (bitmap) {
+                  ctx.drawImage(bitmap, 0, 0, targetW, calculatedH);
+                } else {
+                  ctx.drawImage(video, 0, 0, targetW, calculatedH);
+                }
+                if (typeof offscreen.convertToBlob === 'function') {
+                  blob = await offscreen.convertToBlob({ type: 'image/webp', quality });
+                }
+              }
+            } catch {
+              // fallback to standard canvas if offscreen context fails
             }
-          }, 'image/webp', quality);
-        } catch (e) {
+          }
+
+          // 3. Fallback to standard canvas if OffscreenCanvas is unavailable
+          if (!blob) {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = calculatedH;
+            const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+            if (ctx) {
+              if (bitmap) {
+                ctx.drawImage(bitmap, 0, 0, targetW, calculatedH);
+              } else {
+                ctx.drawImage(video, 0, 0, targetW, calculatedH);
+              }
+              blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/webp', quality));
+            }
+          }
+
+          // STRICT MEMORY INTEGRITY: Immediately close ImageBitmap to prevent VRAM leak
+          if (bitmap) {
+            bitmap.close();
+            bitmap = null;
+          }
+
+          clearTimeout(timeoutId);
+          cleanup();
+
+          if (blob) {
+            const url = urlRegistry.create(blob);
+            resolve({ url, blob });
+          } else {
+            resolve(null);
+          }
+        } catch {
           clearTimeout(timeoutId);
           cleanup();
           resolve(null);
@@ -360,23 +410,89 @@ class ThumbnailCache {
   }
 
   /**
-   * Backward-compatible high quality thumbnail capture for metadataProber
+   * Background non-blocking preheater for timeline clips:
+   * Uses cooperative idle scheduling (requestIdleCallback / setTimeout) to generate thumbnails
+   * in the background using ImageBitmap and OffscreenCanvas during project loading,
+   * completely eliminating main thread blocking and micro-stutters during scrolling.
+   */
+  preheatTimelineThumbnails(
+    items: Array<{ clipId: string; sourceStart: number; duration: number }>,
+    getMediaUrl: (clipId: string) => Promise<string | null>,
+    options?: ThumbnailRequestOptions
+  ): () => void {
+    let isCancelled = false;
+    let index = 0;
+
+    const scheduleNext = () => {
+      if (isCancelled || index >= items.length) return;
+
+      const idleCallback = (typeof window !== 'undefined' && (window as any).requestIdleCallback) || 
+        ((cb: (deadline: { timeRemaining: () => number }) => void) => setTimeout(() => cb({ timeRemaining: () => 25 }), 35));
+
+      idleCallback(async (deadline: { timeRemaining: () => number }) => {
+        if (isCancelled) return;
+
+        while (index < items.length && (!deadline || deadline.timeRemaining() > 5)) {
+          const item = items[index];
+          index++;
+
+          const key = this.getThumbnailKey(item.clipId, item.sourceStart);
+          if (!this.has(key)) {
+            try {
+              await this.getOrRequestThumbnail(
+                item.clipId,
+                item.sourceStart,
+                () => getMediaUrl(item.clipId),
+                { width: options?.width || 140, height: options?.height || 80, quality: options?.quality || 0.65 }
+              );
+            } catch {
+              // Ignore failure in background preheat
+            }
+          }
+
+          if (deadline && deadline.timeRemaining() <= 5) {
+            break;
+          }
+        }
+
+        if (!isCancelled && index < items.length) {
+          scheduleNext();
+        }
+      });
+    };
+
+    scheduleNext();
+
+    return () => {
+      isCancelled = true;
+    };
+  }
+
+  /**
+   * High performance optimal thumbnail capture using ImageBitmap and OffscreenCanvas
    */
   async captureOptimalThumbnail(video: HTMLVideoElement, duration: number): Promise<{ url: string; blob: Blob } | null> {
-    const canvas = document.createElement('canvas');
     const width = 360;
     const height = Math.max(180, Math.round((video.videoHeight / (video.videoWidth || 1)) * width));
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return null;
 
     const candidateTimes = [
       Math.min(Math.max(0.5, duration * 0.15), Math.max(0.2, duration - 0.2)),
       Math.min(Math.max(1.0, duration * 0.35), Math.max(0.2, duration - 0.2)),
       Math.min(Math.max(1.5, duration * 0.55), Math.max(0.2, duration - 0.2))
     ];
+
+    const useOffscreen = typeof OffscreenCanvas !== 'undefined';
+    const canvas: OffscreenCanvas | HTMLCanvasElement = useOffscreen 
+      ? new OffscreenCanvas(width, height) 
+      : document.createElement('canvas');
+
+    if (!useOffscreen) {
+      (canvas as HTMLCanvasElement).width = width;
+      (canvas as HTMLCanvasElement).height = height;
+    }
+
+    const ctx = canvas.getContext('2d', { alpha: false }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    if (!ctx) return null;
 
     for (const targetTime of candidateTimes) {
       video.currentTime = targetTime;
@@ -389,32 +505,67 @@ class ThumbnailCache {
         setTimeout(r, 600);
       });
 
-      ctx.drawImage(video, 0, 0, width, height);
-
-      const sample = ctx.getImageData(Math.floor(width / 4), Math.floor(height / 4), Math.floor(width / 2), Math.floor(height / 2));
-      const data = sample.data;
-      let totalLum = 0;
-      const count = data.length / 4;
-      for (let i = 0; i < data.length; i += 4) {
-        totalLum += (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+      let currentBitmap: ImageBitmap | null = null;
+      if (typeof createImageBitmap === 'function') {
+        try {
+          currentBitmap = await createImageBitmap(video, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' });
+        } catch {
+          try {
+            currentBitmap = await createImageBitmap(video);
+          } catch {
+            currentBitmap = null;
+          }
+        }
       }
-      const avgLum = totalLum / count;
 
-      if (avgLum > 18 || targetTime === candidateTimes[candidateTimes.length - 1]) {
-        break;
+      try {
+        if (currentBitmap) {
+          ctx.drawImage(currentBitmap, 0, 0, width, height);
+        } else {
+          ctx.drawImage(video, 0, 0, width, height);
+        }
+
+        const sample = ctx.getImageData(Math.floor(width / 4), Math.floor(height / 4), Math.floor(width / 2), Math.floor(height / 2));
+        const data = sample.data;
+        let totalLum = 0;
+        const count = data.length / 4;
+        for (let i = 0; i < data.length; i += 4) {
+          totalLum += (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+        }
+        const avgLum = totalLum / count;
+
+        if (avgLum > 18 || targetTime === candidateTimes[candidateTimes.length - 1]) {
+          break;
+        }
+      } finally {
+        if (currentBitmap) {
+          currentBitmap.close();
+          currentBitmap = null;
+        }
       }
     }
 
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          resolve(null);
-          return;
-        }
-        const url = urlRegistry.create(blob);
-        resolve({ url, blob });
-      }, 'image/jpeg', 0.82);
-    });
+    let chosenBlob: Blob | null = null;
+    if (useOffscreen && typeof (canvas as OffscreenCanvas).convertToBlob === 'function') {
+      try {
+        chosenBlob = await (canvas as OffscreenCanvas).convertToBlob({ type: 'image/jpeg', quality: 0.82 });
+      } catch {}
+    }
+
+    if (!chosenBlob) {
+      const fallbackCanvas = document.createElement('canvas');
+      fallbackCanvas.width = width;
+      fallbackCanvas.height = height;
+      const fCtx = fallbackCanvas.getContext('2d', { alpha: false });
+      if (fCtx) {
+        fCtx.drawImage(canvas as any, 0, 0);
+        chosenBlob = await new Promise<Blob | null>((res) => fallbackCanvas.toBlob(res, 'image/jpeg', 0.82));
+      }
+    }
+
+    if (!chosenBlob) return null;
+    const url = urlRegistry.create(chosenBlob);
+    return { url, blob: chosenBlob };
   }
 
   /**

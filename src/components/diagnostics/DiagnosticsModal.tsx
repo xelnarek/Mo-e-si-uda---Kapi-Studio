@@ -74,7 +74,7 @@ export function DiagnosticsModal({ isOpen, onClose, project, isDbConnected }: Di
             title="Kliknij 5 razy, aby włączyć HUD renderowania"
           >
             <Activity className="w-5 h-5 text-emerald-400" />
-            <h2 className="font-serif-luxury font-bold text-base tracking-wide text-white">Diagnostyka Systemowa i Wydajność</h2>
+            <h2 className="font-bold text-base tracking-tight text-white font-sans">Diagnostyka Systemowa i Wydajność</h2>
           </div>
           <button 
             onClick={onClose} 
