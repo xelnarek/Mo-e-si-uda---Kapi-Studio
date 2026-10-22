@@ -721,10 +721,11 @@ export class FrameCompositor {
 
     ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
 
-    const posX = (layer.position?.x ?? 0.5) * width;
-    const posY = ((layer.position?.y ?? 0.85) * height) + offsetY;
-
-    const fontScale = height / 1080;
+    // Scale font relative to the smaller dimension (normalized against 1080p baseline)
+    // to ensure vertical (9:16 portrait) and horizontal (16:9 landscape) outputs maintain
+    // crisp, properly proportioned typography without giant oversized text on mobile reels
+    const minDimension = Math.min(width, height);
+    const fontScale = minDimension / 1080;
     const baseSize = Math.max(14, Math.round((layer.fontSize || 32) * fontScale * scaleFactor));
     const weight = layer.fontWeight || (layer.type === 'title' || layer.type === 'chapter' || layer.style === 'karaoke_glow' ? 'bold' : 'normal');
     
@@ -745,8 +746,36 @@ export class FrameCompositor {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Support multiline text
-    const lines = displayText.split('\n');
+    // Support multiline text with automatic word wrapping to prevent horizontal text overflow
+    const maxAllowedWidth = Math.max(160, width * 0.86);
+    const rawLines = displayText.split('\n');
+    const lines: string[] = [];
+
+    for (const rawLine of rawLines) {
+      const trimmed = rawLine.trim();
+      if (!trimmed) {
+        lines.push('');
+        continue;
+      }
+      if (ctx.measureText(trimmed).width <= maxAllowedWidth) {
+        lines.push(trimmed);
+      } else {
+        const words = trimmed.split(/\s+/);
+        let curLine = '';
+        for (const word of words) {
+          const testLine = curLine ? `${curLine} ${word}` : word;
+          if (ctx.measureText(testLine).width <= maxAllowedWidth) {
+            curLine = testLine;
+          } else {
+            if (curLine) lines.push(curLine);
+            curLine = word;
+          }
+        }
+        if (curLine) lines.push(curLine);
+      }
+    }
+    if (lines.length === 0) lines.push(displayText);
+
     const lineHeight = baseSize * 1.35;
     const totalTextHeight = lines.length * lineHeight;
 
@@ -761,8 +790,14 @@ export class FrameCompositor {
 
     const padX = baseSize * 0.75;
     const padY = baseSize * 0.45;
-    const boxW = maxLineWidth + padX * 2;
+    const boxW = Math.min(width - 24, maxLineWidth + padX * 2);
     const boxH = totalTextHeight + padY * 2;
+
+    // Clamp coordinates safely within the canvas boundary to eliminate cutoffs
+    let posX = (layer.position?.x ?? 0.5) * width;
+    let posY = ((layer.position?.y ?? 0.85) * height) + offsetY;
+    posX = Math.max(boxW / 2 + 12, Math.min(width - boxW / 2 - 12, posX));
+    posY = Math.max(boxH / 2 + 12, Math.min(height - boxH / 2 - 12, posY));
 
     // Draw Background Pill or Lower-Third Card
     if (layer.type === 'lower_third') {

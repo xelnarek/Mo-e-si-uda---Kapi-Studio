@@ -1240,7 +1240,7 @@ export function ExportView({ project, onUpdateProject, onNavigateTab, onResetPro
 
   return (
     <div className="h-full w-full overflow-y-auto custom-scrollbar p-3 sm:p-6 select-none font-sans text-zinc-100">
-      <div className="max-w-6xl mx-auto w-full flex flex-col gap-6 pb-20">
+      <div className="max-w-6xl mx-auto w-full flex flex-col gap-6 pb-36 sm:pb-24">
         {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden border border-zinc-800/80 bg-zinc-900/60 backdrop-blur-xl">
         {/* Subtle decorative glow */}
@@ -2157,33 +2157,33 @@ export function ExportView({ project, onUpdateProject, onNavigateTab, onResetPro
 
       {/* In-Flight Real Progress View */}
       {isExporting && (
-        <div className="glass-card border border-[#facc15]/50 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 my-2 bg-zinc-900/80 backdrop-blur-xl animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+        <div className="glass-card border border-[#facc15]/50 rounded-2xl p-5 sm:p-8 shadow-2xl space-y-6 my-2 bg-zinc-900/80 backdrop-blur-xl animate-fadeIn">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <span className="text-xs uppercase text-[#facc15] font-bold tracking-wider flex items-center gap-2 font-mono">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                 EKSPORT W TOKU
               </span>
-              <h3 className="text-lg sm:text-xl font-bold text-white mt-1 font-sans">
+              <h3 className="text-sm sm:text-xl font-bold text-white mt-1 font-sans truncate" title={progress?.statusMessage}>
                 {progress?.statusMessage || 'Przetwarzanie ujęć i kodowanie strumieni...'}
               </h3>
             </div>
 
             <button
               onClick={handleCancelExport}
-              className="px-4 py-2.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 font-semibold text-xs rounded-xl transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer min-h-[44px]"
+              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-200 border border-rose-800/80 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-md active:scale-95 min-h-[40px]"
             >
-              <StopCircle className="w-4 h-4" />
-              <span>ANULUJ EKSPORT</span>
+              <StopCircle className="w-4 h-4 text-rose-400" />
+              <span>ANULUJ</span>
             </button>
           </div>
 
           {/* Central Prominent Percentage */}
-          <div className="text-center py-4 space-y-2">
+          <div className="text-center py-3 sm:py-4 space-y-1.5">
             <span className="text-5xl sm:text-7xl font-extrabold text-white tracking-tight font-mono block">
               {progress?.percent || 0}%
             </span>
-            <span className="text-sm font-mono text-zinc-400 block">
+            <span className="text-xs sm:text-sm font-mono text-zinc-400 block truncate px-2">
               {progress?.currentClipIndex
                 ? `Klip ${progress.currentClipIndex} z ${progress.totalClips || totalClipsCount} • ${progress.currentClipName || ''}`
                 : `Przetwarzanie sekwencji (${totalClipsCount} ujęć)`}
@@ -2222,7 +2222,7 @@ export function ExportView({ project, onUpdateProject, onNavigateTab, onResetPro
           </div>
 
           {/* Live Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono bg-zinc-950/70 p-4 rounded-xl border border-zinc-800/80">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono bg-zinc-950/70 p-4 rounded-xl border border-zinc-800/80 mb-2">
             <div>
               <span className="text-zinc-400 block text-[10px] uppercase">Klatki:</span>
               <span className="text-white font-bold mt-0.5 block">

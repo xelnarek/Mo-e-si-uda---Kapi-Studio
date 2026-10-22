@@ -1898,7 +1898,7 @@ export function MontageView({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handleSkip(-5)}
-                className="px-2.5 py-1.5 rounded-xl bg-[#22222a] text-zinc-300 active:bg-zinc-700 text-xs font-mono border border-[#2e2e36] min-h-[36px] cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-[#22222a] text-zinc-300 active:bg-zinc-700 text-xs font-mono border border-[#2e2e36] min-h-[40px] cursor-pointer touch-manipulation"
                 title="Cofnij 5s"
               >
                 -5s
@@ -1906,7 +1906,7 @@ export function MontageView({
 
               <button
                 onClick={handlePlayToggle}
-                className="px-3.5 py-1.5 rounded-xl bg-[#facc15] active:bg-[#eab308] text-[#121214] font-bold flex items-center gap-1 min-h-[36px] shadow-sm cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-[#facc15] active:bg-[#eab308] text-[#121214] font-bold flex items-center gap-1.5 min-h-[40px] shadow-sm cursor-pointer touch-manipulation"
                 title={isPlaying ? 'Pauza' : 'Play'}
               >
                 {isPlaying ? <Pause className="w-4 h-4 fill-[#121214]" /> : <Play className="w-4 h-4 fill-[#121214]" />}
@@ -1915,7 +1915,7 @@ export function MontageView({
 
               <button
                 onClick={() => handleSkip(5)}
-                className="px-2.5 py-1.5 rounded-xl bg-[#22222a] text-zinc-300 active:bg-zinc-700 text-xs font-mono border border-[#2e2e36] min-h-[36px] cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-[#22222a] text-zinc-300 active:bg-zinc-700 text-xs font-mono border border-[#2e2e36] min-h-[40px] cursor-pointer touch-manipulation"
                 title="Przewiń 5s"
               >
                 +5s
@@ -2428,10 +2428,10 @@ export function MontageView({
           }`}>
           {/* MOBILE TIMELINE ACTION BAR (< 768px): Single clean row, zero line wraps, touch-friendly min 36px targets */}
           <div className="flex md:hidden items-center justify-between gap-1 pb-1.5 border-b border-[#26262b] text-xs select-none">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSplitAtPlayhead}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-[#22222a] active:bg-amber-400 active:text-black border border-[#2e2e36] rounded-xl text-xs font-semibold cursor-pointer transition min-h-[36px]"
+                className="flex items-center gap-1 px-3 py-1.5 bg-[#22222a] active:bg-amber-400 active:text-black border border-[#2e2e36] rounded-xl text-xs font-semibold cursor-pointer transition min-h-[40px] touch-manipulation"
                 title="Rozetnij ujęcie w pozycji suwaka czasu"
               >
                 <Scissors className="w-3.5 h-3.5" />
@@ -2448,7 +2448,7 @@ export function MontageView({
                   toast.showInfo('Usunięto ujęcie z osi.');
                 }}
                 disabled={!selectedItem}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-[#22222a] active:bg-rose-600 active:text-white border border-[#2e2e36] rounded-xl text-xs font-semibold cursor-pointer transition min-h-[36px] disabled:opacity-30 disabled:pointer-events-none text-rose-300"
+                className="flex items-center gap-1 px-3 py-1.5 bg-[#22222a] active:bg-rose-600 active:text-white border border-[#2e2e36] rounded-xl text-xs font-semibold cursor-pointer transition min-h-[40px] disabled:opacity-30 disabled:pointer-events-none text-rose-300 touch-manipulation"
                 title="Usuń wybrane ujęcie"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -2475,7 +2475,7 @@ export function MontageView({
                   toast.showSuccess('Zduplikowano ujęcie.');
                 }}
                 disabled={!selectedItem || !onUpdateTimelineItems}
-                className="p-2 bg-[#22222a] active:bg-zinc-700 text-cyan-300 border border-[#2e2e36] rounded-xl text-xs cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+                className="p-2 bg-[#22222a] active:bg-zinc-700 text-cyan-300 border border-[#2e2e36] rounded-xl text-xs cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none touch-manipulation"
                 title="Zduplikuj ujęcie"
               >
                 <Copy className="w-3.5 h-3.5" />
@@ -2489,7 +2489,7 @@ export function MontageView({
                   toast.showSuccess(`↻ Obrócono do ${nextRot}°.`);
                 }}
                 disabled={!selectedItem}
-                className="p-2 bg-[#22222a] active:bg-zinc-700 text-amber-400 border border-[#2e2e36] rounded-xl text-xs cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+                className="p-2 bg-[#22222a] active:bg-zinc-700 text-amber-400 border border-[#2e2e36] rounded-xl text-xs cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none touch-manipulation"
                 title="Obróć o 90°"
               >
                 <RotateCw className="w-3.5 h-3.5" />

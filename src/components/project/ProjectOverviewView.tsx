@@ -82,7 +82,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full flex flex-col gap-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto w-full flex flex-col gap-6 animate-fadeIn pb-12 sm:pb-8">
       <input
         type="file"
         ref={fileInputRef}
@@ -308,7 +308,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
           </div>
 
           {/* Sticky Quick Action Bar */}
-          <div className="sticky bottom-16 sm:bottom-4 z-20 glass-panel rounded-2xl p-4 border border-zinc-800 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-xl">
+          <div className="sticky bottom-4 z-20 glass-panel rounded-2xl p-4 border border-zinc-800 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               <div>

@@ -514,25 +514,17 @@ export class WebCodecsMp4RenderProvider implements IRenderProvider {
           if (clip.type === 'video') {
             const video = document.createElement('video');
             video.muted = true;
+            video.defaultMuted = true;
+            video.volume = 0;
+            video.setAttribute('muted', '');
+            video.setAttribute('playsinline', '');
             video.playsInline = true;
             video.preload = 'auto';
-
-            video.style.position = 'fixed';
-            video.style.bottom = '0px';
-            video.style.right = '0px';
-            video.style.width = '16px';
-            video.style.height = '16px';
-            video.style.opacity = '0.001';
-            video.style.pointerEvents = 'none';
-            video.style.zIndex = '-9999';
-            document.body.appendChild(video);
-
             video.crossOrigin = 'anonymous';
             video.src = src;
 
             const loaded = await new Promise<boolean>((resolve) => {
               if (video.readyState >= 1 && video.videoWidth > 0) {
-                try { video.play().then(() => video.pause()).catch(() => {}); } catch {}
                 resolve(true);
                 return;
               }
@@ -541,7 +533,6 @@ export class WebCodecsMp4RenderProvider implements IRenderProvider {
                 if (settled) return;
                 settled = true;
                 cleanup();
-                try { video.play().then(() => video.pause()).catch(() => {}); } catch {}
                 resolve(true);
               };
               const onError = () => {
@@ -556,9 +547,9 @@ export class WebCodecsMp4RenderProvider implements IRenderProvider {
                 video.removeEventListener('error', onError);
               };
 
-              video.addEventListener('loadedmetadata', onMetadata);
-              video.addEventListener('canplay', onMetadata);
-              video.addEventListener('error', onError);
+              video.addEventListener('loadedmetadata', onMetadata, { once: true });
+              video.addEventListener('canplay', onMetadata, { once: true });
+              video.addEventListener('error', onError, { once: true });
               video.load();
 
               setTimeout(() => {
@@ -740,7 +731,8 @@ export class WebCodecsMp4RenderProvider implements IRenderProvider {
               const targetSourceTime = activeItem.sourceStart + (timeInItem * speed);
               const diff = Math.abs(videoEl.currentTime - targetSourceTime);
 
-              if (diff > 0.04) {
+              // Seek if drift exceeds half a frame duration
+              if (diff > (0.45 / fps)) {
                 videoEl.currentTime = targetSourceTime;
                 await new Promise<void>((res) => {
                   if (!videoEl.seeking && videoEl.readyState >= 2) {
@@ -756,9 +748,9 @@ export class WebCodecsMp4RenderProvider implements IRenderProvider {
                       res();
                     }
                   };
-                  videoEl.addEventListener('seeked', complete);
-                  videoEl.addEventListener('canplay', complete);
-                  setTimeout(complete, 1000);
+                  videoEl.addEventListener('seeked', complete, { once: true });
+                  videoEl.addEventListener('canplay', complete, { once: true });
+                  setTimeout(complete, 300);
                 });
                 heartbeat();
               }

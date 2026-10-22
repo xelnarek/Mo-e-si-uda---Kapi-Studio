@@ -407,19 +407,12 @@ export class LocalBrowserRenderProvider implements IRenderProvider {
       if (clip.type === 'video') {
         const video = document.createElement('video');
         video.muted = true;
+        video.defaultMuted = true;
+        video.volume = 0;
+        video.setAttribute('muted', '');
+        video.setAttribute('playsinline', '');
         video.playsInline = true;
         video.preload = 'auto';
-
-        video.style.position = 'fixed';
-        video.style.bottom = '0px';
-        video.style.right = '0px';
-        video.style.width = '16px';
-        video.style.height = '16px';
-        video.style.opacity = '0.001';
-        video.style.pointerEvents = 'none';
-        video.style.zIndex = '-9999';
-        document.body.appendChild(video);
-
         video.crossOrigin = 'anonymous';
         video.src = src;
 

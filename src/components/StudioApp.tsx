@@ -1122,7 +1122,7 @@ export function StudioApp() {
         <div className={`flex-1 w-full min-h-0 relative ${
           activeTab === 'montage' || activeTab === 'export'
             ? 'overflow-hidden p-0' 
-            : 'overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col gap-3 p-2 sm:p-4 md:p-6 max-w-full pb-6'
+            : 'overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col gap-3 p-2 sm:p-4 md:p-6 max-w-full pb-24 md:pb-6'
         }`}>
           
           {/* GPU Hardware Acceleration Warning Banner */}
