@@ -106,28 +106,37 @@ const ai = new Proxy({} as GoogleGenAI, {
   }
 });
 
-// Helper for retrying with exponential backoff on 429 (Rate Limit) or 503 (Unavailable / High Demand)
-async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, delayMs = 1000): Promise<T> {
+// Helper to determine if an error is due to high demand / service unavailable (503) or rate limit
+function isHighDemandError(err: any): boolean {
+  const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err || ''));
+  return (
+    err?.status === 503 ||
+    err?.status === 'UNAVAILABLE' ||
+    err?.error?.code === 503 ||
+    err?.error?.status === 'UNAVAILABLE' ||
+    errStr.includes('503') ||
+    errStr.includes('UNAVAILABLE') ||
+    errStr.includes('high demand') ||
+    errStr.includes('temporarily unavailable')
+  );
+}
+
+// Helper for retrying with fast exponential backoff on transient errors (Rate Limit or Connection Glitch)
+async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 1, delayMs = 400): Promise<T> {
   try {
     return await fn();
   } catch (err: any) {
     const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err || ''));
+    const is503 = isHighDemandError(err);
     const isRetryable = 
-      (err?.status === 'RESOURCE_EXHAUSTED' || 
+      (is503 ||
+      err?.status === 'RESOURCE_EXHAUSTED' || 
       err?.status === 429 || 
-      err?.status === 503 ||
-      err?.status === 'UNAVAILABLE' ||
       err?.error?.code === 429 ||
-      err?.error?.code === 503 ||
-      err?.error?.status === 'UNAVAILABLE' ||
       errStr.includes('429') || 
-      errStr.includes('503') ||
       errStr.includes('RESOURCE_EXHAUSTED') || 
-      errStr.includes('UNAVAILABLE') ||
       errStr.includes('quota') ||
       errStr.includes('limit reached') ||
-      errStr.includes('high demand') ||
-      errStr.includes('temporarily unavailable') ||
       errStr.includes('ECONNRESET') ||
       errStr.includes('ETIMEDOUT') ||
       err?.name === 'FetchError') &&
@@ -137,27 +146,48 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, delayMs = 
       !errStr.includes('credits are depleted');
       
     if (retries > 0 && isRetryable) {
-      console.log(`[AI Retry] Retrying in ${delayMs}ms... (attempts left: ${retries}). Error: ${errStr.substring(0, 80)}`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      const waitTime = is503 ? Math.min(delayMs, 300) : delayMs;
+      console.log(`[AI Retry] Retrying in ${waitTime}ms... (attempts left: ${retries}). Notice: ${errStr.substring(0, 70)}`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       return retryWithBackoff(fn, retries - 1, Math.round(delayMs * 1.5));
     }
     throw err;
   }
 }
 
-// Executes with immediate model failover if the primary model is experiencing a 503/429 spike
+// Executes with immediate model failover if the primary model is experiencing a 503 high demand spike
 async function executeWithModelFallback<T>(
   taskFn: (modelName: string) => Promise<T>,
-  models: string[] = ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
+  models: string[] = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest']
 ): Promise<T> {
   let lastError: any = null;
-  for (const model of models) {
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const isLastModel = i === models.length - 1;
     try {
-      return await retryWithBackoff(() => taskFn(model), 1, 800);
+      if (isLastModel) {
+        // Last model: try with 1 quick backoff retry
+        return await retryWithBackoff(() => taskFn(model), 1, 400);
+      } else {
+        // Not the last model: try without waiting on 503 so we fail over immediately
+        try {
+          return await taskFn(model);
+        } catch (innerErr: any) {
+          if (isHighDemandError(innerErr)) {
+            // High demand on this model: do NOT wait, jump immediately to the backup model
+            console.warn(`[AI Failover] Model ${model} experiencing high demand (503). Instantly pivoting to: ${models[i + 1]}`);
+            throw innerErr;
+          }
+          // For other transient network glitches, 1 fast retry
+          return await retryWithBackoff(() => taskFn(model), 1, 300);
+        }
+      }
     } catch (err: any) {
       lastError = err;
       const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err || ''));
-      console.warn(`[AI Failover] Model ${model} under load (${errStr.substring(0, 60)}). Switching to backup model.`);
+      if (!isLastModel && !isHighDemandError(err)) {
+        console.warn(`[AI Failover] Model ${model} unavailable (${errStr.substring(0, 60)}). Switching to backup: ${models[i + 1]}`);
+      }
     }
   }
   throw lastError;
@@ -494,9 +524,9 @@ app.post('/api/analyze-media', async (req, res) => {
         try {
           if (!base64 || base64.length < 10) throw new Error("File too large or no data for inline analysis");
           
-          const modelResponse = await retryWithBackoff(() => 
+          const modelResponse = await executeWithModelFallback((modelName) => 
             ai.models.generateContent({
-              model: 'gemini-3.8-flash',
+              model: modelName,
               contents: {
                 parts: [
                   { inlineData: { mimeType: itemMimeType, data: base64 } },
@@ -539,9 +569,9 @@ app.post('/api/analyze-media', async (req, res) => {
         try {
           if (!base64 || base64.length < 10) throw new Error("File too large or no data for inline analysis");
           
-          const modelResponse = await retryWithBackoff(() => 
+          const modelResponse = await executeWithModelFallback((modelName) => 
             ai.models.generateContent({
-              model: 'gemini-3.8-flash',
+              model: modelName,
               contents: {
                 parts: [
                   { inlineData: { mimeType: itemMimeType, data: base64 } },
@@ -675,8 +705,7 @@ Zwróć wynik jako JSON z polami:
           model: modelName,
           contents: prompt,
           config: schemaConfig
-        }),
-        ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
+        })
       );
 
       const parsed = JSON.parse(response.text || '{}');
@@ -1023,9 +1052,9 @@ Odpowiedz po polsku w formacie JSON jako tablica stringów: ["wskazówka 1", "ws
 
     let tips: string[] = [];
     try {
-      const response = await retryWithBackoff(() =>
+      const response = await executeWithModelFallback((modelName) =>
         ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: modelName,
           contents: prompt,
           config: {
             responseMimeType: "application/json",
@@ -1034,9 +1063,7 @@ Odpowiedz po polsku w formacie JSON jako tablica stringów: ["wskazówka 1", "ws
               items: { type: Type.STRING }
             }
           }
-        }),
-        1,
-        600
+        })
       );
 
       const parsed = JSON.parse(response.text || '[]');
@@ -1096,9 +1123,9 @@ Styl i gatunek: "${style}" (np. kinowy zwiastun, nastrojowy dokument, dynamiczna
 Napisz wyłącznie czysty tekst po polsku, gotowy do odczytania przez profesjonalnego lektora.`;
 
       try {
-        const scriptRes = await retryWithBackoff(() => 
+        const scriptRes = await executeWithModelFallback((modelName) => 
           ai.models.generateContent({
-            model: 'gemini-3.8-flash',
+            model: modelName,
             contents: scriptPrompt
           })
         );
@@ -1131,13 +1158,13 @@ Napisz wyłącznie czysty tekst po polsku, gotowy do odczytania przez profesjona
             }
           }
         }),
-        2,
-        1000
+        1,
+        400
       );
 
       audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
     } catch (ttsErr: any) {
-      console.warn('[TTS] Gemini TTS API unavailable or quota reached:', ttsErr?.message || ttsErr);
+      console.warn('[TTS] Gemini TTS API notice:', ttsErr?.message || ttsErr);
     }
 
     res.json({
@@ -1200,8 +1227,7 @@ Odpowiedz jako JSON z polami:
           model: modelName,
           contents: prompt,
           config: schemaConfig
-        }),
-        ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
+        })
       );
       resultData = JSON.parse(response.text || '{}');
     } catch (e: any) {
@@ -1303,8 +1329,7 @@ ${JSON.stringify(clips.map((c: any, i: number) => ({
           model: modelName,
           contents: prompt,
           config: schemaConfig
-        }),
-        ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
+        })
       );
       result = JSON.parse(response.text || '{}');
     } catch (err1: any) {
@@ -1500,25 +1525,22 @@ Zwróć WYŁĄCZNIE przetłumaczony tekst napisów, bez żadnych zbędnych komen
 Tekst kwestii:
 "${text.trim()}"`;
 
-    let response: any = null;
-    const textModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
-    for (const mod of textModels) {
-      try {
-        response = await retryWithBackoff(() =>
-          ai.models.generateContent({
-            model: mod,
-            contents: prompt
-          }),
-          1,
-          800
-        );
-        if (response?.text) break;
-      } catch (tErr: any) {
-        console.warn(`[Translate Dialogue] Model ${mod} note:`, tErr?.message || tErr);
+    let translated = text;
+    try {
+      const response = await executeWithModelFallback((mod) =>
+        ai.models.generateContent({
+          model: mod,
+          contents: prompt
+        }),
+        ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
+      );
+      if (response?.text) {
+        translated = response.text.trim();
       }
+    } catch (tErr: any) {
+      console.warn('[Translate Dialogue] Models unavailable, using source text:', tErr?.message || tErr);
     }
 
-    const translated = response?.text?.trim() || text;
     res.json({ success: true, translatedText: translated, originalText: text });
   } catch (err: any) {
     console.warn('[Translate Dialogue Error]', err);
@@ -1612,32 +1634,17 @@ ${JSON.stringify(clips.map((c: any) => ({
     let result: any = null;
 
     try {
-      const response = await retryWithBackoff(() =>
+      const response = await executeWithModelFallback((modelName) =>
         ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: modelName,
           contents: prompt,
           config: schemaConfig
         }),
-        2,
-        1200
+        ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest']
       );
       result = JSON.parse(response.text || '{}');
     } catch (err1: any) {
-      console.log('Fallback flash-lite dla smart-chronological-sequencing.');
-      try {
-        const fallbackRes = await retryWithBackoff(() =>
-          ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite',
-            contents: prompt,
-            config: schemaConfig
-          }),
-          1,
-          800
-        );
-        result = JSON.parse(fallbackRes.text || '{}');
-      } catch (err2: any) {
-        console.log('Algorytm regułowy dla sekwencjonowania chronologicznego.');
-      }
+      console.log('Algorytm regułowy dla sekwencjonowania chronologicznego.');
     }
 
     // Helper function to produce beautiful Polish scene titles without technical filenames
