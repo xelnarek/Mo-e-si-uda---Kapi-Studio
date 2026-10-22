@@ -5,35 +5,11 @@ if ((globalThis as any).__dirname === '.') {
 if ((globalThis as any).__filename === '.') {
   delete (globalThis as any).__filename;
 }
-
 import dns from 'node:dns';
-import { Agent, setGlobalDispatcher } from 'undici';
-
-// Prioritize IPv4 and configure global Undici dispatcher to prevent ConnectTimeoutError on Google API endpoints
 if (dns.setDefaultResultOrder) {
   try {
     dns.setDefaultResultOrder('ipv4first');
   } catch {}
-}
-if ((dns as any).setDefaultAutoSelectFamily) {
-  try {
-    (dns as any).setDefaultAutoSelectFamily(true);
-  } catch {}
-}
-
-try {
-  const globalAgent = new Agent({
-    connect: {
-      timeout: 30000,
-      autoSelectFamily: true,
-      autoSelectFamilyAttemptTimeout: 1000
-    },
-    keepAliveTimeout: 5000,
-    keepAliveMaxTimeout: 45000
-  });
-  setGlobalDispatcher(globalAgent);
-} catch (agentErr) {
-  console.warn('[Server] Note on global Undici dispatcher setup:', agentErr);
 }
 
 import express from 'express';
@@ -91,11 +67,29 @@ const upload = multer({
   limits: { fileSize: 2048 * 1024 * 1024 } // 2GB limit per video export
 });
 
+function getGeminiApiKey(): string {
+  const key = 
+    process.env.GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY_1 ||
+    process.env.GEMINI_API_KEY_2 ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.API_KEY ||
+    '';
+  if (key && !process.env.GEMINI_API_KEY) {
+    process.env.GEMINI_API_KEY = key;
+  }
+  return key;
+}
+
 let aiClient: GoogleGenAI | null = null;
+let currentKeyUsed: string = '';
+
 function getAI(): GoogleGenAI {
-  if (!aiClient) {
+  const apiKey = getGeminiApiKey();
+  if (!aiClient || currentKeyUsed !== apiKey) {
+    currentKeyUsed = apiKey;
     aiClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || '',
+      ...(apiKey ? { apiKey } : {}),
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -154,7 +148,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, delayMs = 
 // Executes with immediate model failover if the primary model is experiencing a 503/429 spike
 async function executeWithModelFallback<T>(
   taskFn: (modelName: string) => Promise<T>,
-  models: string[] = ['gemini-2.5-flash', 'gemini-2.5-pro']
+  models: string[] = ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
 ): Promise<T> {
   let lastError: any = null;
   for (const model of models) {
@@ -502,7 +496,7 @@ app.post('/api/analyze-media', async (req, res) => {
           
           const modelResponse = await retryWithBackoff(() => 
             ai.models.generateContent({
-              model: 'gemini-2.5-flash',
+              model: 'gemini-3.8-flash',
               contents: {
                 parts: [
                   { inlineData: { mimeType: itemMimeType, data: base64 } },
@@ -547,7 +541,7 @@ app.post('/api/analyze-media', async (req, res) => {
           
           const modelResponse = await retryWithBackoff(() => 
             ai.models.generateContent({
-              model: 'gemini-2.5-flash',
+              model: 'gemini-3.8-flash',
               contents: {
                 parts: [
                   { inlineData: { mimeType: itemMimeType, data: base64 } },
@@ -682,7 +676,7 @@ Zwróć wynik jako JSON z polami:
           contents: prompt,
           config: schemaConfig
         }),
-        ['gemini-2.5-flash', 'gemini-2.5-pro']
+        ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
       );
 
       const parsed = JSON.parse(response.text || '{}');
@@ -948,55 +942,68 @@ app.post('/api/drive/upload-binary', upload.single('file'), async (req, res) => 
 app.post('/api/generate-cover', async (req, res) => {
   try {
     const { prompt, size } = req.body;
-    
-    // Size should be "1K", "2K", or "4K"
     const validSizes = ["1K", "2K", "4K"];
     const imageSize = validSizes.includes(size) ? size : "1K";
 
-    let response: any = null;
+    let base64Image: string | null = null;
+    let mimeType = 'image/jpeg';
+
+    // 1. Try imagen-3.0-generate-002 with proper property extraction
     try {
-      response = await retryWithBackoff(() => 
+      const imgRes = await retryWithBackoff(() => 
         ai.models.generateImages({
           model: 'imagen-3.0-generate-002',
-          prompt: prompt || "Piękna, artystyczna, kinowa kompozycja filmowa, profesjonalne oświetlenie sceniczne, wysmakowany kadr",
+          prompt: prompt || "Piękna, artystyczna, kinowa kompozycja filmowa, profesjonalne oświetlenie sceniczne, wysmakowany kadr 16:9",
           config: {
             numberOfImages: 1,
             aspectRatio: "16:9",
             outputMimeType: "image/jpeg"
           }
-        })
+        }),
+        1,
+        600
       );
+      if ((imgRes as any)?.generatedImages?.[0]?.image?.imageBytes) {
+        base64Image = (imgRes as any).generatedImages[0].image.imageBytes;
+        mimeType = 'image/jpeg';
+      }
     } catch (err) {
-      console.log("Przełączono na okładkę awaryjną (limit API obrazów).");
-      response = { fallback: true };
+      console.log("[Cover Gen] Standard imagen error, trying multimodal content generation...");
     }
 
-    if (!response || ('fallback' in response)) {
-      // Return a high quality public domain cinema placeholder
-      return res.json({ 
-        imageUrl: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=1200",
-        isFallback: true,
-        message: "Osiągnięto limit generatora AI. Użyto kinowej okładki zastępczej."
-      });
-    }
-
-    // Find image part
-    let base64Image = null;
-    const candidates = (response as any).candidates;
-    if (candidates && candidates.length > 0) {
-      for (const part of candidates[0].content?.parts || []) {
-        if (part.inlineData) {
-           base64Image = part.inlineData.data;
-           break;
+    // 2. Try gemini-3.1-flash-lite-image fallback if available
+    if (!base64Image) {
+      try {
+        const contentRes = await retryWithBackoff(() =>
+          ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: prompt || "Piękny kadr kinowy 16:9, plakat filmowy w stylu kinowym",
+          }),
+          1,
+          600
+        );
+        for (const part of contentRes.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData?.data) {
+            base64Image = part.inlineData.data;
+            mimeType = part.inlineData.mimeType || 'image/png';
+            break;
+          }
         }
+      } catch (err2) {
+        console.log("[Cover Gen] Flash lite image note:", (err2 as any)?.message || err2);
       }
     }
 
     if (base64Image) {
-       res.json({ imageUrl: `data:image/jpeg;base64,${base64Image}` });
-    } else {
-       throw new Error("No image generated.");
+      return res.json({ imageUrl: `data:${mimeType};base64,${base64Image}` });
     }
+
+    // Fallback: high quality aesthetic cinema placeholder
+    res.json({ 
+      imageUrl: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=1200",
+      isFallback: true,
+      message: "Użyto pięknej kinowej okładki zastępczej."
+    });
   } catch (err: any) {
     console.log('Korzystanie z okładki standardowej.');
     res.json({ 
@@ -1009,32 +1016,62 @@ app.post('/api/generate-cover', async (req, res) => {
 
 app.post('/api/storyboard-tips', async (req, res) => {
   try {
-    const { mood } = req.body;
+    const { mood = 'cinematic' } = req.body;
     
-    const prompt = `Zaproponuj 2 krótkie, inspirujące wskazówki lub trendy (max 1-2 zdania każda) dotyczące technik filmowania, oświetlenia lub montażu dla wideo w nastroju: ${mood}.
-Użyj narzędzia Google Search, aby znaleźć najnowsze techniki i trendy. Odpowiedz w języku polskim.`;
+    const prompt = `Jesteś ekspertem reżyserii filmowej. Zaproponuj 2 krótkie, profesjonalne wskazówki dotyczące filmowania, oświetlenia lub montażu dla wideo w nastroju "${mood}".
+Odpowiedz po polsku w formacie JSON jako tablica stringów: ["wskazówka 1", "wskazówka 2"].`;
 
-    const response = await retryWithBackoff(() =>
-      (ai.models.generateContent as any)({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        tools: [{ googleSearch: {} }],
-        toolConfig: { includeServerSideToolInvocations: true },
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
+    let tips: string[] = [];
+    try {
+      const response = await retryWithBackoff(() =>
+        ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
           }
-        }
-      })
-    );
+        }),
+        1,
+        600
+      );
 
-    const parsed = JSON.parse((response as any).text || '[]');
-    res.json({ tips: parsed });
+      const parsed = JSON.parse(response.text || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        tips = parsed;
+      }
+    } catch (e: any) {
+      console.log('Automatyczne przejście na wskazówki studyjne dla storyboard-tips.');
+    }
+
+    if (tips.length === 0) {
+      const moodTipsMap: Record<string, string[]> = {
+        cinematic: [
+          "Stosuj przemyślaną głębię ostrości i regułę trójpodziału, aby wyróżnić główny motyw sceny i nadać ujęciom kinowej plastyki.",
+          "Wykorzystaj kontrast oświetlenia i 'złotą godzinę', by zbudować głębię kadru oraz naturalne, organiczne flary optyczne."
+        ],
+        documentary: [
+          "Rejestruj autentyczny dźwięk otoczenia z mikrofonu kierunkowego, by nadać reportażowi intymnej prawdy dokumentalnej.",
+          "Zmieniaj perspektywy: łącz statyczne wypowiedzi bohaterów z dynamicznymi zbliżeniami na dłonie i detale otoczenia."
+        ],
+        commercial: [
+          "Zastosuj wyrazisty hook wizualny w pierwszych 2 sekundach i dynamiczne speed-rampy na kluczowych uderzeniach rytmu.",
+          "Użyj czystego, kontrastowego światła produktowego i precyzyjnych plansz z kluczowymi korzyściami."
+        ],
+        travel: [
+          "Łącz szerokie plany z drona o świcie z intymnymi, portretowymi ujęciami spotkanych ludzi i lokalnej kultury.",
+          "Zadbaj o płynne przejścia w ruchu (whip-pan, zoom-in), które naturalnie przenoszą widza w nowe miejsca podróży."
+        ]
+      };
+      tips = moodTipsMap[mood] || moodTipsMap.cinematic;
+    }
+
+    res.json({ tips });
   } catch (err: any) {
     console.log('Korzystanie ze standardowych wskazówek reżyserskich.');
-    // Return fallback tips on API exhaustion
     const fallbackTips = [
       "Stosuj przemyślaną głębię ostrości i regułę trójpodziału, aby wyróżnić główny motyw sceny i nadać ujęciom kinowej plastyki.",
       "Wykorzystaj kontrast oświetlenia i 'złotą godzinę', by zbudować głębię kadru oraz naturalne, organiczne flary optyczne."
@@ -1061,7 +1098,7 @@ Napisz wyłącznie czysty tekst po polsku, gotowy do odczytania przez profesjona
       try {
         const scriptRes = await retryWithBackoff(() => 
           ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.8-flash',
             contents: scriptPrompt
           })
         );
@@ -1076,7 +1113,7 @@ Napisz wyłącznie czysty tekst po polsku, gotowy do odczytania przez profesjona
     try {
       const ttsResponse = await retryWithBackoff(() => 
         ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash-lite-tts',
           contents: {
             role: 'user',
             parts: [
@@ -1164,7 +1201,7 @@ Odpowiedz jako JSON z polami:
           contents: prompt,
           config: schemaConfig
         }),
-        ['gemini-2.5-flash', 'gemini-2.5-pro']
+        ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
       );
       resultData = JSON.parse(response.text || '{}');
     } catch (e: any) {
@@ -1267,7 +1304,7 @@ ${JSON.stringify(clips.map((c: any, i: number) => ({
           contents: prompt,
           config: schemaConfig
         }),
-        ['gemini-2.5-flash', 'gemini-2.5-pro']
+        ['gemini-3.8-flash', 'gemini-3.1-flash-lite']
       );
       result = JSON.parse(response.text || '{}');
     } catch (err1: any) {
@@ -1325,6 +1362,21 @@ ZADANIE:
 POD ŻADNYM POZOREM NIE WYMYŚLAJ dialogów, nie twórz fikcyjnego scenariusza ani nie dopowiadaj słów, które nie padły w dźwięku!`;
 
         const callGemini = async (modelName: string) => {
+          if (modelName === 'gemini-3.5-transcribe') {
+            return ai.models.generateContent({
+              model: modelName,
+              contents: [
+                {
+                  inlineData: {
+                    mimeType: mimeType || 'audio/wav',
+                    data: audioBase64
+                  }
+                },
+                { text: "Dokonaj transkrypcji mowy z tego nagrania audio na język polski. Zwróć wyłącznie transkrybowane słowa i dialogi." }
+              ]
+            });
+          }
+
           return ai.models.generateContent({
             model: modelName,
             contents: [
@@ -1361,22 +1413,58 @@ POD ŻADNYM POZOREM NIE WYMYŚLAJ dialogów, nie twórz fikcyjnego scenariusza a
           });
         };
 
-        let response;
-        try {
-          response = await retryWithBackoff(() => callGemini('gemini-3.8-flash'));
-        } catch (mErr) {
-          console.warn('[Audio Transcribe] Fallback to gemini-2.5-flash:', mErr);
-          response = await retryWithBackoff(() => callGemini('gemini-2.5-flash'));
+        let response: any = null;
+        let successfulModel = '';
+        const audioModels = ['gemini-3.8-flash', 'gemini-3.5-transcribe', 'gemini-3.1-flash-lite'];
+        for (const mod of audioModels) {
+          try {
+            response = await retryWithBackoff(() => callGemini(mod), 1, 800);
+            if (response && response.text) {
+              successfulModel = mod;
+              break;
+            }
+          } catch (mErr: any) {
+            console.warn(`[Audio Transcribe] Model ${mod} failed, trying next:`, mErr?.message || mErr);
+          }
         }
 
-        const parsed = JSON.parse(response.text || '{}');
-        if (Array.isArray(parsed.segments)) {
-          return res.json({ 
-            success: true, 
-            segments: parsed.segments, 
-            hasSpeech: parsed.segments.length > 0,
-            source: 'gemini_audio_transcription' 
-          });
+        if (response && response.text) {
+          let segments: Array<{ text: string; startTime: number; endTime: number; speaker?: string }> = [];
+          
+          try {
+            const parsed = JSON.parse(response.text.trim());
+            if (Array.isArray(parsed.segments)) {
+              segments = parsed.segments;
+            }
+          } catch {
+            // If model returned plain text (e.g. gemini-3.5-transcribe), convert sentences into subtitle cues
+            const cleanText = response.text.trim();
+            if (cleanText.length > 0 && !cleanText.toLowerCase().includes('brak mowy')) {
+              const sentences = cleanText
+                .split(/(?<=[.?!])\s+|\n+/)
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 2);
+              
+              const totalSec = Math.max(5, durationSec || 15);
+              const cueDuration = Math.min(4.5, Math.max(2.0, totalSec / Math.max(1, sentences.length)));
+
+              segments = sentences.map((sent: string, sIdx: number) => ({
+                text: sent,
+                startTime: Number((sIdx * cueDuration).toFixed(2)),
+                endTime: Number(Math.min(totalSec, (sIdx + 1) * cueDuration).toFixed(2)),
+                speaker: 'Dialog'
+              }));
+            }
+          }
+
+          if (segments.length > 0) {
+            return res.json({ 
+              success: true, 
+              segments, 
+              hasSpeech: true,
+              source: successfulModel || 'gemini_audio_transcription' 
+            });
+          }
         }
       } catch (geminiErr: any) {
         console.warn('[Audio Transcribe] Gemini multimodal audio processing note:', geminiErr?.message || geminiErr);
@@ -1412,24 +1500,25 @@ Zwróć WYŁĄCZNIE przetłumaczony tekst napisów, bez żadnych zbędnych komen
 Tekst kwestii:
 "${text.trim()}"`;
 
-    let response;
-    try {
-      response = await retryWithBackoff(() =>
-        ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt
-        })
-      );
-    } catch {
-      response = await retryWithBackoff(() =>
-        ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt
-        })
-      );
+    let response: any = null;
+    const textModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+    for (const mod of textModels) {
+      try {
+        response = await retryWithBackoff(() =>
+          ai.models.generateContent({
+            model: mod,
+            contents: prompt
+          }),
+          1,
+          800
+        );
+        if (response?.text) break;
+      } catch (tErr: any) {
+        console.warn(`[Translate Dialogue] Model ${mod} note:`, tErr?.message || tErr);
+      }
     }
 
-    const translated = response.text?.trim() || text;
+    const translated = response?.text?.trim() || text;
     res.json({ success: true, translatedText: translated, originalText: text });
   } catch (err: any) {
     console.warn('[Translate Dialogue Error]', err);
@@ -1525,7 +1614,7 @@ ${JSON.stringify(clips.map((c: any) => ({
     try {
       const response = await retryWithBackoff(() =>
         ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: prompt,
           config: schemaConfig
         }),
@@ -1538,7 +1627,7 @@ ${JSON.stringify(clips.map((c: any) => ({
       try {
         const fallbackRes = await retryWithBackoff(() =>
           ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-3.1-flash-lite',
             contents: prompt,
             config: schemaConfig
           }),

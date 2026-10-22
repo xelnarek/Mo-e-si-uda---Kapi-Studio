@@ -16,7 +16,8 @@ import {
   Pause,
   Layers,
   Wand2,
-  Volume2
+  Volume2,
+  Loader2
 } from 'lucide-react';
 import type { ProjectState, TextLayer, SubtitleStyle } from '../../types/project';
 import { 
@@ -27,6 +28,7 @@ import {
   exportToSRT, 
   SpeechTranscriptionEngine 
 } from '../../core/audio/autoCaptionsEngine';
+import { liveDialogueTranslator } from '../../core/audio/liveDialogueTranslatorEngine';
 import { useStudioToast } from '../common/ToastContext';
 
 interface AutoCaptionsModalProps {
@@ -61,7 +63,46 @@ export function AutoCaptionsModal({
   });
 
   const [rawSrtText, setRawSrtText] = useState<string>('');
+  const [isAiScanning, setIsAiScanning] = useState<boolean>(false);
+  const [scanStatus, setScanStatus] = useState<string>('');
   const speechEngineRef = useRef<SpeechTranscriptionEngine | null>(null);
+
+  const handleScanProjectAudioWithAI = async () => {
+    if (!project.timelineItems || project.timelineItems.length === 0) {
+      toast.showWarning('Dodaj najpierw ujęcia wideo lub ścieżkę dźwiękową na oś czasu.');
+      return;
+    }
+    setIsAiScanning(true);
+    setScanStatus('Ekstrakcja ścieżki dźwiękowej filmu i analiza mowy Gemini AI...');
+    toast.showInfo('🎙️ Rozpoczęto automatyczną analizę audio filmu (Gemini AI)...');
+    try {
+      const res = await liveDialogueTranslator.autoAnalyzeProjectAudio(project, (prog) => {
+        setScanStatus(prog.message || 'Analiza audio filmu...');
+      });
+
+      if (res.totalSegments > 0) {
+        const newCaps: CaptionSegment[] = (res.textLayers || [])
+          .filter(t => t.type === 'caption' || t.type === 'subtitle')
+          .map(t => ({
+            id: t.id,
+            text: t.text,
+            startTime: t.timelineStart,
+            endTime: t.timelineStart + t.duration,
+            speaker: t.subtitleSpeaker || 'Dialog'
+          }));
+        setCaptionsList(newCaps);
+        toast.showSuccess(`✨ Sukces! AI wykryło i przetłumaczyło ${newCaps.length} kwestii dialogowych PL!`);
+        setActiveTab('manual');
+      } else {
+        toast.showInfo('W ścieżce dźwiękowej filmu nie wykryto mowy ani dialogów (np. wyłącznie muzyka lub cisza).');
+      }
+    } catch (err: any) {
+      toast.showError('Błąd analizy audio: ' + (err?.message || 'Błąd połączenia'));
+    } finally {
+      setIsAiScanning(false);
+      setScanStatus('');
+    }
+  };
 
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
@@ -311,6 +352,53 @@ export function AutoCaptionsModal({
           {/* TAB 1: AI SPEECH RECOGNITION */}
           {activeTab === 'ai_speech' && (
             <div className="space-y-4">
+              {/* PRIMARY OPTION: Full Project Audio Scan via Gemini Multimodal AI */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-zinc-900/90 to-zinc-900/90 border border-[#00e5cc]/30 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#00e5cc]/15 border border-[#00e5cc]/30 flex items-center justify-center text-[#00e5cc] shrink-0">
+                    <Sparkles className="w-6 h-6 text-[#00e5cc]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white block">
+                        Automatyczne Skanowanie Audio z Osi Czasu (Gemini AI)
+                      </span>
+                      <span className="text-[9px] font-mono font-bold bg-[#00e5cc]/20 text-[#00e5cc] px-1.5 py-0.5 rounded">
+                        ZALECANE
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300 mt-0.5">
+                      Przeskanuj całą ścieżkę dźwiękową filmu, wykryj dialogi w dowolnym języku i przetłumacz na kinowy język polski z dokładnymi znacznikami czasu.
+                    </p>
+                    {isAiScanning && scanStatus && (
+                      <p className="text-[10px] font-mono text-[#00e5cc] mt-1 flex items-center gap-1.5 animate-pulse">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>{scanStatus}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleScanProjectAudioWithAI}
+                  disabled={isAiScanning}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-2xl text-xs font-black bg-[#00e5cc] hover:bg-[#14f3db] text-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:scale-[1.02] disabled:opacity-50 shrink-0"
+                >
+                  {isAiScanning ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>Skanowanie...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-black" />
+                      <span>Skanuj Audio Projektu</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* SECONDARY OPTION: Live Mic Dictation */}
               <div className="p-4 rounded-2xl bg-[#18181F] border border-[#2A2A36] flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
