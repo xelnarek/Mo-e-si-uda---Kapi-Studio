@@ -110,6 +110,31 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string; icon: stri
   unassigned: { label: 'Pozostałe ujęcie', color: 'bg-stone-500/20 text-stone-300 border-stone-500/40', icon: '🎬' }
 };
 
+const normalizeText = (value: string | undefined, fallback: string) => {
+  const cleaned = (value || '').replace(/\s+/g, ' ').trim();
+  return cleaned.length > 0 ? cleaned.slice(0, 120) : fallback;
+};
+
+const normalizePacing = (value: 'cinematic' | 'dynamic' | 'emotional'): DirectorMergeOptions['pacing'] => {
+  if (value === 'dynamic') return 'fast';
+  if (value === 'emotional') return 'slow';
+  return 'cinematic';
+};
+
+const buildNarrativeCaption = (title: string, style: 'cinematic_poetic' | 'elegant_classic' | 'modern_short') => {
+  const cleaned = normalizeText(title, 'Moment filmowy');
+
+  switch (style) {
+    case 'elegant_classic':
+      return `Pamiątka — ${cleaned}`;
+    case 'modern_short':
+      return cleaned;
+    case 'cinematic_poetic':
+    default:
+      return `${cleaned} • chwila, która zostanie na zawsze`;
+  }
+};
+
 export function AiChronologicalMergeModal({
   isOpen,
   onClose,
@@ -196,9 +221,9 @@ export function AiChronologicalMergeModal({
         outdoor: ['Malarstwo Plenerowe', 'Złota Godzina', 'Szeroka Perspektywa']
       };
       const pool = titleDictionary[cat] || ['Kluczowe Ujęcie Filmowe', 'Wyjątkowy Kadr Montażowy'];
-      return pool[index % pool.length];
+      return normalizeText(pool[index % pool.length], 'Kluczowe Ujęcie Filmowe');
     }
-    return t;
+    return normalizeText(t, 'Nowy Moment Filmowy');
   };
 
   const handleStartAnalysis = async () => {
@@ -254,13 +279,14 @@ export function AiChronologicalMergeModal({
           const foundClip = clipMap.get(item.clipId);
           if (foundClip) {
             const cat = (item.category as ClipCategory) || foundClip.category || 'unassigned';
-            const cleanTitle = item.smartTitle || generatePolishSceneTitle(foundClip.name, cat, idx);
+            const cleanTitle = normalizeText(item.smartTitle || generatePolishSceneTitle(foundClip.name, cat, idx), 'Nowy Kadr');
+            const subtitleText = normalizeText(item.subtitleCaption || buildNarrativeCaption(cleanTitle, captionStyle), 'Moment filmowy');
             formatted.push({
               clipId: item.clipId,
               clip: foundClip,
               targetOrder: item.targetOrder || (idx + 1),
               smartTitle: cleanTitle,
-              subtitleCaption: item.subtitleCaption || `Pamiątkowa chwila – ${cleanTitle}`,
+              subtitleCaption: subtitleText,
               category: cat,
               emotion: item.emotion || 'romantic',
               timeOfDay: item.timeOfDay || (idx < rawSeq.length * 0.3 ? 'morning' : (idx < rawSeq.length * 0.7 ? 'afternoon' : 'evening')),
@@ -276,13 +302,13 @@ export function AiChronologicalMergeModal({
         // Include any clips that were not part of response at the end
         clips.forEach((c) => {
           if (!formatted.some(f => f.clipId === c.id)) {
-            const cleanTitle = generatePolishSceneTitle(c.name, c.category || 'unassigned', formatted.length);
+            const cleanTitle = normalizeText(generatePolishSceneTitle(c.name, c.category || 'unassigned', formatted.length), 'Nowy Kadr');
             formatted.push({
               clipId: c.id,
               clip: c,
               targetOrder: formatted.length + 1,
               smartTitle: cleanTitle,
-              subtitleCaption: `Ujęcie z uroczystości – ${cleanTitle}`,
+              subtitleCaption: normalizeText(buildNarrativeCaption(cleanTitle, captionStyle), 'Ujęcie z uroczystości'),
               category: c.category || 'unassigned',
               transition: 'dissolve',
               trimStart: 0,
@@ -310,7 +336,7 @@ export function AiChronologicalMergeModal({
         const fallbackSeq: SequencedItem[] = sorted.map((c, i) => {
           const catIdx = Math.min(universalCategories.length - 1, Math.floor((i / Math.max(1, sorted.length)) * universalCategories.length));
           const cat = c.category && c.category !== 'unassigned' ? c.category : universalCategories[catIdx];
-          const cleanTitle = generatePolishSceneTitle(c.name, cat, i);
+          const cleanTitle = normalizeText(generatePolishSceneTitle(c.name, cat, i), 'Nowy Kadr');
 
           // Intelligent transition assignment based on position and pacing
           let chosenTransition = 'dissolve';
@@ -333,7 +359,7 @@ export function AiChronologicalMergeModal({
             clip: c,
             targetOrder: i + 1,
             smartTitle: cleanTitle,
-            subtitleCaption: `Ujęcie filmowe – ${cleanTitle}`,
+            subtitleCaption: normalizeText(buildNarrativeCaption(cleanTitle, captionStyle), `Ujęcie filmowe – ${cleanTitle}`),
             category: cat,
             emotion: pacing === 'dynamic' ? 'energetic' : (pacing === 'emotional' ? 'nostalgic' : 'cinematic'),
             timeOfDay,
@@ -406,6 +432,7 @@ export function AiChronologicalMergeModal({
     generateChapters,
     includeSoundtrack,
     soundtrackPresetId,
+    pacing: normalizePacing(pacing),
     targetTab
   });
 
@@ -434,13 +461,14 @@ export function AiChronologicalMergeModal({
       generateChapters: true,
       includeSoundtrack: includeSoundtrack,
       soundtrackPresetId: soundtrackPresetId || 'altar_procession',
+      pacing: normalizePacing(pacing),
       targetTab
     };
 
     onApplyToTimeline(active.map(i => ({
       clip: i.clip,
-      smartTitle: i.smartTitle,
-      subtitleCaption: i.subtitleCaption,
+      smartTitle: normalizeText(i.smartTitle, 'Nowy Kadr'),
+      subtitleCaption: normalizeText(i.subtitleCaption, 'Moment filmowy'),
       category: i.category,
       emotion: i.emotion,
       timeOfDay: i.timeOfDay,
@@ -464,8 +492,8 @@ export function AiChronologicalMergeModal({
 
     onApplyToTimeline(active.map(i => ({
       clip: i.clip,
-      smartTitle: i.smartTitle,
-      subtitleCaption: i.subtitleCaption,
+      smartTitle: normalizeText(i.smartTitle, 'Nowy Kadr'),
+      subtitleCaption: normalizeText(i.subtitleCaption, 'Moment filmowy'),
       category: i.category,
       emotion: i.emotion,
       timeOfDay: i.timeOfDay,
@@ -489,8 +517,8 @@ export function AiChronologicalMergeModal({
 
     onApplyToTimeline(active.map(i => ({
       clip: i.clip,
-      smartTitle: i.smartTitle,
-      subtitleCaption: i.subtitleCaption,
+      smartTitle: normalizeText(i.smartTitle, 'Nowy Kadr'),
+      subtitleCaption: normalizeText(i.subtitleCaption, 'Moment filmowy'),
       category: i.category,
       emotion: i.emotion,
       timeOfDay: i.timeOfDay,
@@ -506,9 +534,9 @@ export function AiChronologicalMergeModal({
   const handleApplyCaptions = () => {
     onApplyCaptionsToLibrary(sequencedItems.map(i => ({
       id: i.clipId,
-      name: i.smartTitle,
+      name: normalizeText(i.smartTitle, 'Nowy Kadr'),
       category: i.category,
-      comment: i.subtitleCaption,
+      comment: normalizeText(i.subtitleCaption, 'Moment filmowy'),
       tags: [i.category, 'ai_chronological']
     })));
 
@@ -553,7 +581,7 @@ export function AiChronologicalMergeModal({
             <button
               onClick={handleStartAnalysis}
               disabled={isLoading}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-semibold text-zinc-200 transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-semibold text-zinc-200 transition-all cursor-pointer"
               title="Przelicz ponownie chronologię i napisy"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -795,7 +823,7 @@ export function AiChronologicalMergeModal({
                   />
                 </label>
                 <p className="text-[11px] text-zinc-300 leading-relaxed">
-                  Automatycznie dopasowuje polskie napisy na podstawie ścieżki dźwiękowej filmu. Działa zarówno na podglądzie montażu (ON/OFF), jak i przy finalnym scalaniu i renderowaniu pliku MP4.
+                  Automatycznie dopasowuje polskie napisy na podstawie ścieżki dźwiękowej filmu. Działa zarówno na podglądzie montażu (ON/OFF), jak i przy finalnym scalaniu i renderowaniu.
                 </p>
               </div>
 
@@ -1178,7 +1206,7 @@ export function AiChronologicalMergeModal({
             <button
               onClick={handleApplyCaptions}
               disabled={isLoading || sequencedItems.length === 0}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs font-bold text-[#FDE047] hover:bg-zinc-800 hover:border-amber-400/50 transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs font-bold text-[#FDE047] hover:bg-zinc-800 hover:border-amber-400/50 transition-colors cursor-pointer"
               title="Zaktualizuj nazwy, kategorie i podpisy w bibliotece ujęć"
             >
               <TypeIcon className="w-3.5 h-3.5" />
@@ -1190,7 +1218,7 @@ export function AiChronologicalMergeModal({
             <button
               onClick={() => handleApplyAllDirectorOptionsAtOnce('montage')}
               disabled={isLoading || sequencedItems.length === 0}
-              className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-zinc-950 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(245,158,11,0.35)] transition-all hover:scale-105 active:scale-95"
+              className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-zinc-950 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all cursor-pointer"
               title="Wszystkie opcje reżyserskie naraz: wstępna karta, chronologia, karty scen, napisy, podziękowania i muzyka"
             >
               <Sparkles className="w-4 h-4 fill-zinc-950" />
@@ -1200,7 +1228,7 @@ export function AiChronologicalMergeModal({
             <button
               onClick={handleMergeAndExportDirectly}
               disabled={isLoading || sequencedItems.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-500/50 text-xs font-bold text-amber-300 cursor-pointer transition-all shadow-md active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-500/50 text-xs font-bold text-amber-300 cursor-pointer transition-all shadow-sm"
               title="Scal wszystkie ujęcia z wybranymi dodatkami i przejdź bezpośrednio do okna eksportu"
             >
               <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -1232,7 +1260,7 @@ export function AiChronologicalMergeModal({
               
               {/* Caption Overlay */}
               <div className="absolute bottom-6 inset-x-6 text-center pointer-events-none">
-                <span className="bg-black/75 backdrop-blur-sm border border-white/10 px-4 py-1.5 rounded-lg text-xs md:text-sm font-sans font-medium text-white italic drop-shadow-md inline-block max-w-lg">
+                <span className="bg-black/75 backdrop-blur-sm border border-white/10 px-4 py-1.5 rounded-lg text-xs md:text-sm font-sans font-medium text-white italic drop-shadow-md inline-block">
                   "{previewClip.caption}"
                 </span>
               </div>
