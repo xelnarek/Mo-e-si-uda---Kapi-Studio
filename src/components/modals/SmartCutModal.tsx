@@ -18,7 +18,6 @@ import type { ProjectState, TimelineItem, MediaClip } from '../../types/project'
 import { SmartCutAnalyzer, type SmartCutResult } from '../../core/audio/smartCutAnalyzer';
 import { SafeAudioDecoder } from '../../core/audio/audioDecoder';
 import { resolveClipMediaUrl } from '../../core/media/mediaResolver';
-import { useAuth } from '../../lib/firebase/AuthContext';
 import { useStudioToast } from '../common/ToastContext';
 
 interface SmartCutModalProps {
@@ -34,7 +33,6 @@ export function SmartCutModal({
   project,
   onUpdateTimelineItems
 }: SmartCutModalProps) {
-  const { accessToken } = useAuth();
   const toast = useStudioToast();
 
   const [thresholdDb, setThresholdDb] = useState<number>(-38);

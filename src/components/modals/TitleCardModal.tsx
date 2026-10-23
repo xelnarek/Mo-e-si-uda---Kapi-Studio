@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Type, 
-  Sparkles, 
-  Clock, 
-  Palette, 
-  Layout, 
   Check, 
   X, 
-  Eye, 
-  Film, 
-  Sliders,
-  Play
+  Eye,
+  Sparkles 
 } from 'lucide-react';
 import type { TitleCard } from '../../types/project';
 import { FrameCompositor } from '../../core/render/FrameCompositor';

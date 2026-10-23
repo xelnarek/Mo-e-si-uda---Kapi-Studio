@@ -21,7 +21,6 @@ import { SmartCutModal } from './modals/SmartCutModal';
 import { CommandPalette, type CommandItem } from './common/CommandPalette';
 import { ShareModal } from './common/ShareModal';
 import { 
-  Play, 
   Scissors, 
   Sparkles, 
   Wand2, 
@@ -32,11 +31,9 @@ import {
   Type, 
   RotateCcw, 
   RotateCw, 
-  HardDrive, 
   Cloud,
   FolderPlus,
   Sliders,
-  Maximize2,
   Layers,
   ShieldCheck,
   MessageSquare,

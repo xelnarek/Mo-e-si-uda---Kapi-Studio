@@ -28,7 +28,7 @@ import {
   CheckSquare,
   Square
 } from 'lucide-react';
-import type { MediaClip, ClipCategory, ProjectState, TimelineItem, TextLayer, WeddingChapter, LookPreset } from '../../types/project';
+import type { MediaClip, ClipCategory, LookPreset } from '../../types/project';
 import { useStudioToast } from '../common/ToastContext';
 
 export interface DirectorMergeOptions {

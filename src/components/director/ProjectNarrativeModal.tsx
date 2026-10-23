@@ -21,7 +21,6 @@ import type {
   TextLayer, 
   VideoChapter, 
   ColorGradingPreset, 
-  TimelineItem,
   TitleCard
 } from '../../types/project';
 import { useStudioToast } from '../common/ToastContext';

@@ -92,6 +92,7 @@ export function MediaManager({
 }: MediaManagerProps) {
   // Extra safety check for clips being null or undefined
   const safeClips = Array.isArray(clips) ? clips : [];
+  const toast = useStudioToast();
   
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -108,33 +109,6 @@ export function MediaManager({
       .catch(() => {});
   }, []);
 
-  const handleBatchMergeAndExport = () => {
-    if (safeClips.length === 0) {
-      toast.showWarning('Dodaj filmy do biblioteki przed scalaniem.');
-      return;
-    }
-    const targetClips = selectedIds.size > 0 
-      ? safeClips.filter(c => selectedIds.has(c.id)) 
-      : (filteredClips.length > 0 ? filteredClips : safeClips);
-
-    // Sort chronologically by recording or creation timestamp
-    const sorted = [...targetClips].sort((a, b) => {
-      const timeA = new Date(a.capturedAt || a.createdAt || 0).getTime();
-      const timeB = new Date(b.capturedAt || b.createdAt || 0).getTime();
-      return timeA - timeB;
-    });
-
-    if (onBatchAddToTimeline) {
-      onBatchAddToTimeline(sorted);
-    } else {
-      sorted.forEach(clip => onAddToTimeline(clip));
-    }
-
-    toast.showSuccess(`🎬 Ułożono chronologicznie ${sorted.length} filmów na osi czasu. Przechodzę do eksportu...`);
-    if (onNavigateToExport) {
-      onNavigateToExport();
-    }
-  };
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
 
@@ -158,7 +132,6 @@ export function MediaManager({
   const [isConfirmBatchDeleteOpen, setIsConfirmBatchDeleteOpen] = useState(false);
   const [previewingClip, setPreviewingClip] = useState<MediaClip | null>(null);
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
-  const toast = useStudioToast();
 
   // Asynchronously resolve clip media URL for preview modal
   React.useEffect(() => {
@@ -867,6 +840,34 @@ export function MediaManager({
 
     return groups.sort((a, b) => (b.isCluster ? 1 : 0) - (a.isCluster ? 1 : 0));
   }, [filteredClips, isGroupedBySimilarity]);
+
+  const handleBatchMergeAndExport = () => {
+    if (safeClips.length === 0) {
+      toast.showWarning('Dodaj filmy do biblioteki przed scalaniem.');
+      return;
+    }
+    const targetClips = selectedIds.size > 0 
+      ? safeClips.filter(c => selectedIds.has(c.id)) 
+      : (filteredClips.length > 0 ? filteredClips : safeClips);
+
+    // Sort chronologically by recording or creation timestamp
+    const sorted = [...targetClips].sort((a, b) => {
+      const timeA = new Date(a.capturedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.capturedAt || b.createdAt || 0).getTime();
+      return timeA - timeB;
+    });
+
+    if (onBatchAddToTimeline) {
+      onBatchAddToTimeline(sorted);
+    } else {
+      sorted.forEach(clip => onAddToTimeline(clip));
+    }
+
+    toast.showSuccess(`🎬 Ułożono chronologicznie ${sorted.length} filmów na osi czasu. Przechodzę do eksportu...`);
+    if (onNavigateToExport) {
+      onNavigateToExport();
+    }
+  };
 
   return (
     <div className="flex flex-col space-y-4 pb-6 w-full max-w-full">
