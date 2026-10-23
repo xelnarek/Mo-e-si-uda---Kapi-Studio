@@ -177,7 +177,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
       {/* Content Area */}
       {totalClips === 0 ? (
         <div className="glass-card rounded-2xl p-10 sm:p-14 text-center flex flex-col items-center justify-center gap-5 border border-zinc-800/80 shadow-xl relative overflow-hidden">
-          <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-indigo-400 shadow-xl shadow-indigo-500/5">
+          <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/5">
             <Film className="w-8 h-8" />
           </div>
 
@@ -193,7 +193,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="btn-primary px-6 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/25 cursor-pointer"
+              className="bg-amber-400 hover:bg-amber-300 text-zinc-950 px-6 py-3 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Wgraj Pliki Wideo i Audio</span>
@@ -214,7 +214,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-zinc-400">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-400" />
+                <Layers className="w-4 h-4 text-amber-400" />
                 <h3 className="font-semibold uppercase tracking-wider text-zinc-200 text-xs font-mono">
                   Biblioteka Ujęć ({totalClips})
                 </h3>
@@ -222,7 +222,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
 
               <button
                 onClick={() => onNavigateTab('montage')}
-                className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 cursor-pointer font-medium transition-colors"
+                className="text-amber-400 hover:text-amber-300 flex items-center gap-1.5 cursor-pointer font-medium transition-colors"
               >
                 <span>Otwórz oś czasu montażu</span>
                 <ArrowRight className="w-4 h-4" />
@@ -331,9 +331,9 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
 
               <button
                 onClick={() => onNavigateTab('export')}
-                className="flex-1 sm:flex-none px-5 py-2.5 btn-primary text-white font-semibold text-xs rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold text-xs rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
-                <Play className="w-3.5 h-3.5 fill-white" />
+                <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Przejdź do Eksportu</span>
               </button>
             </div>
@@ -362,7 +362,7 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
                     onClick={onClearCache}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg transition-colors cursor-pointer"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
                     <span>Wyczyść pamięć podręczną</span>
                   </button>
 

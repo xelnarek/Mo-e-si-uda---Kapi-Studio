@@ -1058,10 +1058,10 @@ export function MediaManager({
 
       {/* AI Smart Chronological Sequencing Banner */}
       {clips.length >= 2 && onOpenChronologicalModal && (
-        <div className="relative rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-indigo-950/40 via-zinc-900/90 to-purple-950/40 border border-indigo-500/30 shadow-xl overflow-hidden">
+        <div className="relative rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-amber-950/20 via-zinc-900/90 to-zinc-900 border border-amber-500/30 shadow-xl overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
             <div className="flex items-start sm:items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-md text-indigo-400">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 shadow-md text-amber-400">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
@@ -1069,7 +1069,7 @@ export function MediaManager({
                   <h3 className="font-semibold text-sm sm:text-base text-white">
                     Inteligentne Scalanie Chronologiczne & Podpisy
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-[10px] font-semibold text-indigo-300 font-mono">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[10px] font-semibold text-amber-300 font-mono">
                     {clips.length} ujęć
                   </span>
                 </div>
@@ -1083,10 +1083,10 @@ export function MediaManager({
               {onQuickApplyDirectorCut && (
                 <button
                   onClick={() => onQuickApplyDirectorCut()}
-                  className="btn-primary px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20 whitespace-nowrap"
+                  className="bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 transition-all whitespace-nowrap"
                   title="Szybkie scalenie z domyślną chronologią i kartami wstępu"
                 >
-                  <Sparkles className="w-3.5 h-3.5 fill-white" />
+                  <Sparkles className="w-3.5 h-3.5 fill-current" />
                   <span>Scal & Podpisz (1-Klik)</span>
                 </button>
               )}
@@ -1124,27 +1124,27 @@ export function MediaManager({
           <div className="flex items-center gap-2 bg-zinc-900/90 p-1.5 rounded-xl border border-zinc-800 text-xs overflow-x-auto touch-pan-x custom-scrollbar max-w-full font-sans">
             <button
               onClick={() => handleFilterTabChange('all')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'all' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'all' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
               Wszystkie ({clips.length})
             </button>
             <button
               onClick={() => handleFilterTabChange('video')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'video' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'video' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
               <Film className="w-5 h-5" />
               <span>Wideo ({clips.filter(c => c.type === 'video').length})</span>
             </button>
             <button
               onClick={() => handleFilterTabChange('image')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'image' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'image' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
               <ImageIcon className="w-5 h-5" />
               <span>Zdjęcia ({clips.filter(c => c.type === 'image').length})</span>
             </button>
             <button
               onClick={() => handleFilterTabChange('audio')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'audio' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'audio' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
               <Music className="w-5 h-5" />
               <span>Audio ({clips.filter(c => c.type === 'audio').length})</span>
@@ -1152,14 +1152,14 @@ export function MediaManager({
             <div className="w-px h-5 bg-zinc-800 mx-1" />
             <button
               onClick={() => handleFilterTabChange('best')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-1.5 cursor-pointer ${filterTab === 'best' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'text-emerald-400 hover:bg-emerald-950/30'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-1.5 cursor-pointer ${filterTab === 'best' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs' : 'text-emerald-400 hover:bg-emerald-950/30'}`}
               title="Pokaż ujęcia ocenione jako Najlepsze"
             >
               ★ Najlepsze
             </button>
             <button
               onClick={() => handleFilterTabChange('duplicates')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'duplicates' ? 'bg-amber-600 text-white shadow-md' : 'text-amber-400 hover:bg-amber-950/30'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'duplicates' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs' : 'text-amber-400 hover:bg-amber-950/30'}`}
               title="Pokaż serie ujęć i wykryte duble"
             >
               <Copy className="w-5 h-5" />
@@ -1168,19 +1168,19 @@ export function MediaManager({
             <div className="w-px h-5 bg-zinc-800 mx-1" />
             <button
               onClick={() => handleFilterTabChange('unused')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'unused' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'unused' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white'}`}
             >
               Nieużyte
             </button>
             <button
               onClick={() => handleFilterTabChange('used')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'used' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'used' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white'}`}
             >
               Na osi
             </button>
             <button
               onClick={() => handleFilterTabChange('favorites')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'favorites' ? 'bg-indigo-600 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'favorites' ? 'bg-[#272730] text-amber-400 font-bold border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white'}`}
             >
               ★ Ulubione
             </button>
@@ -1195,7 +1195,7 @@ export function MediaManager({
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'grid' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                  viewMode === 'grid' ? 'bg-[#272730] text-amber-400 border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white'
                 }`}
                 title="Widok Siatka (standardowy)"
               >
@@ -1204,7 +1204,7 @@ export function MediaManager({
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'list' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                  viewMode === 'list' ? 'bg-[#272730] text-amber-400 border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white'
                 }`}
                 title="Widok Lista (profesjonalny stół montażowy)"
               >
@@ -1213,7 +1213,7 @@ export function MediaManager({
               <button
                 onClick={() => setViewMode('compact')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'compact' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                  viewMode === 'compact' ? 'bg-[#272730] text-amber-400 border border-[#383848] shadow-xs' : 'text-zinc-400 hover:text-white'
                 }`}
                 title="Widok Kompaktowy (dla 50-100+ ujęć)"
               >
@@ -1303,10 +1303,10 @@ export function MediaManager({
             {clips.length > 0 && (
               <button
                 onClick={handleBatchMergeAndExport}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs shadow-md shadow-indigo-600/30 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold text-xs shadow-md shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap shrink-0"
                 title="Układa ujęcia chronologicznie i przechodzi bezpośrednio do finalizacji i eksportu filmu"
               >
-                <Play className="w-3.5 h-3.5 fill-white" />
+                <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Scal i Eksportuj Film</span>
               </button>
             )}
@@ -1314,10 +1314,10 @@ export function MediaManager({
             {onOpenChronologicalModal && clips.length > 0 && (
               <button
                 onClick={() => onOpenChronologicalModal?.()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/60 hover:border-indigo-400 transition-all cursor-pointer text-xs font-semibold whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/60 hover:border-amber-400 transition-all cursor-pointer text-xs font-semibold whitespace-nowrap shrink-0"
                 title="Automatyczne scalanie chronologiczne i podpisywanie scen"
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>Scal i Podpisz</span>
               </button>
             )}
@@ -1328,7 +1328,7 @@ export function MediaManager({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 transition-all cursor-pointer text-xs font-medium whitespace-nowrap shrink-0"
                 title="Zaznacza wszystkie widoczne ujęcia"
               >
-                <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
+                <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
                 <span>Zaznacz wszystkie ({filteredClips.length})</span>
               </button>
             )}
@@ -1414,9 +1414,9 @@ export function MediaManager({
 
       {/* Batch Actions Bar for Multi-selection */}
       {selectedIds.size > 0 && (
-        <div className="bg-zinc-900 border border-indigo-500/60 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xl shrink-0 animate-in fade-in duration-150">
+        <div className="bg-zinc-900 border border-amber-500/50 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xl shrink-0 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 text-xs text-white flex-wrap">
-            <span className="font-semibold text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-500/40 flex items-center gap-1.5 shadow-inner">
+            <span className="font-semibold text-amber-300 bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-500/40 flex items-center gap-1.5 shadow-inner font-mono">
               <span>{selectedIds.size} zaznaczonych</span>
               <span className="text-zinc-400 text-[10px] font-mono">
                 ({formatDuration(clips.filter(c => selectedIds.has(c.id)).reduce((acc, c) => acc + (c.duration || 0), 0))})
@@ -1449,20 +1449,20 @@ export function MediaManager({
                   const selected = clips.filter(c => selectedIds.has(c.id));
                   onOpenChronologicalModal(selected.length > 0 ? selected : filteredClips);
                 }}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
+                className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
                 title="Otwórz Reżysera dla zaznaczonych materiałów"
               >
-                <Sparkles className="w-4 h-4 fill-white" />
+                <Sparkles className="w-4 h-4 fill-current text-amber-400" />
                 <span>Reżyser ({selectedIds.size})</span>
               </button>
             )}
 
             <button
               onClick={handleBatchMergeAndExport}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
+              className="bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
               title="Scal zaznaczone ujęcia i przejdź bezpośrednio do okna eksportu"
             >
-              <Play className="w-4 h-4 fill-white" />
+              <Play className="w-4 h-4 fill-current" />
               <span>Scal i Eksportuj ({selectedIds.size})</span>
             </button>
 
@@ -1471,7 +1471,7 @@ export function MediaManager({
               className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-medium text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-sm cursor-pointer transition-colors"
               title="Dodaj wszystkie zaznaczone ujęcia do montażu"
             >
-              <Plus className="w-4 h-4 text-indigo-400" />
+              <Plus className="w-4 h-4 text-amber-400" />
               <span>Dodaj do osi ({selectedIds.size})</span>
             </button>
 
