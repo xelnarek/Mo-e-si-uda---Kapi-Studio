@@ -171,6 +171,16 @@ export class LiveAudioEngine {
         }
 
         this.audioElements.set(track.id, audio);
+      } else if (!audio.src || audio.error) {
+        if (track.file) {
+          try { audio.src = urlRegistry.create(track.file); } catch {}
+        } else if (track.objectUrl) {
+          audio.src = track.objectUrl;
+        } else {
+          resolveAudioTrackUrl(track).then(url => {
+            if (url && audio && (!audio.src || audio.error)) audio.src = url;
+          });
+        }
       }
 
       const isInsideSpan = currentTime >= track.timelineStart && currentTime < track.timelineStart + track.duration;
@@ -182,9 +192,9 @@ export class LiveAudioEngine {
 
         // Drift check: sync timestamp if off by more than 0.3s or if paused
         if (audio.paused || Math.abs(audio.currentTime - targetLocalTime) > 0.3) {
-          if (audio.readyState >= 1) {
-            try { audio.currentTime = targetLocalTime; } catch {}
-          }
+          try {
+            audio.currentTime = targetLocalTime;
+          } catch {}
         }
 
         const baseVol = (track.volume ?? 1) * this.masterVolume * musicVolumeFactor;

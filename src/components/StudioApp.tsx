@@ -1108,6 +1108,11 @@ export function StudioApp() {
         onResetProject={handleResetProject}
         onOpenAiAssistant={() => handleOpenMasterHub('ai_chat')}
         onOpenDirector={() => handleOpenMasterHub('director')}
+        onOpenChronologicalModal={() => {
+          setChronologicalClips(project.mediaLibrary);
+          setIsChronologicalModalOpen(true);
+        }}
+        onOpenNarrativeDirector={() => setIsProjectNarrativeModalOpen(true)}
         onToggleHealthPanel={() => setIsHealthPanelOpen(!isHealthPanelOpen)}
         isHealthPanelOpen={isHealthPanelOpen}
         onOpenVoiceRecorder={() => setIsVoiceRecorderOpen(true)}
@@ -1258,6 +1263,38 @@ export function StudioApp() {
           }}
           onNavigateToExport={() => setActiveTab('export')}
           onOpenVoiceRecorder={() => setIsVoiceRecorderOpen(true)}
+        />
+      )}
+
+      {/* AI Chronological Sequencing & Director Cut Modal */}
+      {isChronologicalModalOpen && (
+        <AiChronologicalMergeModal
+          isOpen={isChronologicalModalOpen}
+          onClose={() => setIsChronologicalModalOpen(false)}
+          clips={chronologicalClips.length > 0 ? chronologicalClips : project.mediaLibrary}
+          onApplyToTimeline={(items, options) => {
+            handleApplyChronologicalMerge(items, options);
+            setIsChronologicalModalOpen(false);
+          }}
+          onApplyCaptionsToLibrary={handleApplyCaptionsToLibrary}
+          onOpenQuickMerge={() => {
+            setIsChronologicalModalOpen(false);
+            handleOpenMasterHub('quick_merge');
+          }}
+        />
+      )}
+
+      {/* Project Narrative & Story Structure Modal */}
+      {isProjectNarrativeModalOpen && (
+        <ProjectNarrativeModal
+          isOpen={isProjectNarrativeModalOpen}
+          onClose={() => setIsProjectNarrativeModalOpen(false)}
+          project={project}
+          onApplyProject={(updated) => {
+            pushState(updated);
+            setIsProjectNarrativeModalOpen(false);
+            setActiveTab('montage');
+          }}
         />
       )}
 
@@ -1414,6 +1451,25 @@ export function StudioApp() {
             subtitle: 'Inteligentny montaż master, pacing, storyboard i czołówki',
             icon: Wand2,
             action: () => handleOpenMasterHub('director')
+          },
+          {
+            id: 'cmd-chronological',
+            category: 'Montaż',
+            title: 'Scalanie Chronologiczne & Podpisy Ujęć',
+            subtitle: 'Automatyczne ułożenie ujęć według czasu nagrania, czołówki i podpisy scen',
+            icon: Sparkles,
+            action: () => {
+              setChronologicalClips(project.mediaLibrary);
+              setIsChronologicalModalOpen(true);
+            }
+          },
+          {
+            id: 'cmd-narrative',
+            category: 'Montaż',
+            title: 'Struktura Narracyjna & Scenariusz Aktów',
+            subtitle: 'Trzyaktowa struktura dramatyczna, punkty kulminacyjne i motywy',
+            icon: Wand2,
+            action: () => setIsProjectNarrativeModalOpen(true)
           },
           {
             id: 'cmd-quickmerge',

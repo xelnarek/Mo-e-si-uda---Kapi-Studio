@@ -1011,6 +1011,7 @@ export function MontageView({
 
   // Last UI state update timestamp for throttling top-level React re-renders during 60fps playback
   const lastStateTickRef = useRef<number>(0);
+  const lastAudioSyncTickRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
   currentTimeRef.current = currentTime;
 
@@ -1025,6 +1026,7 @@ export function MontageView({
 
     lastTickTimeRef.current = performance.now();
     lastStateTickRef.current = performance.now();
+    lastAudioSyncTickRef.current = performance.now();
 
     const loop = (now: number) => {
       const delta = (now - lastTickTimeRef.current) / 1000;
@@ -1052,6 +1054,17 @@ export function MontageView({
       currentTimeRef.current = calculatedTime;
       liveDialogueTranslator.updatePlayheadTime(calculatedTime, project.textLayers);
 
+      // Continuous periodic audio sync (~150ms) to ensure background music & voiceovers enter/exit seamlessly
+      if (now - lastAudioSyncTickRef.current >= 150) {
+        lastAudioSyncTickRef.current = now;
+        liveAudioEngine.syncAudioTracks(
+          project.audioTracks || [],
+          calculatedTime,
+          true,
+          project.settings?.audioBalance?.musicVolume ?? 0.85
+        );
+      }
+
       // Throttle React state updates to ~25fps (every 40ms) to prevent main-thread locks
       if (now - lastStateTickRef.current >= 40) {
         lastStateTickRef.current = now;
@@ -1065,7 +1078,7 @@ export function MontageView({
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [isPlaying, totalDuration, activeTimelineItem?.id, activeClip?.id, activeClip?.type, project.textLayers]);
+  }, [isPlaying, totalDuration, activeTimelineItem?.id, activeClip?.id, activeClip?.type, project.textLayers, project.audioTracks, project.settings?.audioBalance]);
 
   // Sync HTML5 video element with active item and source (Decoupled from high-frequency currentTime)
   useEffect(() => {

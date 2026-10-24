@@ -13,6 +13,7 @@ import {
   Sparkles,
   Mic,
   Bookmark,
+  BookOpen,
   Keyboard,
   Activity,
   Wand2,
@@ -123,7 +124,7 @@ function ModernAuthStatus({ isCollapsed = false }: { isCollapsed?: boolean }) {
             <p className="text-xs text-white truncate font-medium">{user.displayName || 'Użytkownik'}</p>
             <p className="text-[11px] text-zinc-400 truncate">{user.email}</p>
             <div className="flex items-center gap-1.5 mt-2 px-2 py-1 rounded-lg bg-zinc-800/80 border border-zinc-700/60 text-[10px] text-emerald-400">
-              <Cloud className="w-3 h-3 text-indigo-400" />
+              <Cloud className="w-3 h-3 text-amber-400" />
               <span>Dysk Google: {hasDriveAccess ? 'Aktywny' : 'Brak uprawnień'}</span>
             </div>
           </div>
@@ -133,7 +134,7 @@ function ModernAuthStatus({ isCollapsed = false }: { isCollapsed?: boolean }) {
               setIsMenuOpen(false);
               login();
             }}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors w-full text-left cursor-pointer"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors w-full text-left cursor-pointer"
           >
             <GoogleIcon className="w-3.5 h-3.5" />
             <span>Odśwież token Dysku</span>
@@ -177,6 +178,8 @@ interface StudioLayoutProps {
   onResetProject?: () => void;
   onOpenAiAssistant?: () => void;
   onOpenDirector?: () => void;
+  onOpenChronologicalModal?: () => void;
+  onOpenNarrativeDirector?: () => void;
   onToggleHealthPanel?: () => void;
   isHealthPanelOpen?: boolean;
   onOpenVoiceRecorder?: () => void;
@@ -208,6 +211,8 @@ export function StudioLayout({
   onResetProject,
   onOpenAiAssistant, 
   onOpenDirector,
+  onOpenChronologicalModal,
+  onOpenNarrativeDirector,
   onToggleHealthPanel,
   isHealthPanelOpen = false,
   onOpenVoiceRecorder, 
@@ -369,6 +374,28 @@ export function StudioLayout({
                       HUB
                     </span>
                   )}
+                </button>
+              )}
+
+              {onOpenChronologicalModal && (
+                <button
+                  onClick={onOpenChronologicalModal}
+                  className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-start gap-3 px-3 py-2'} rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer group`}
+                  title="Scalanie Chronologiczne & Podpisy Ujęć"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 group-hover:scale-105 transition-transform" />
+                  {!isSidebarCollapsed && <span className="truncate font-medium">Scalanie & Podpisy</span>}
+                </button>
+              )}
+
+              {onOpenNarrativeDirector && (
+                <button
+                  onClick={onOpenNarrativeDirector}
+                  className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-start gap-3 px-3 py-2'} rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer group`}
+                  title="Struktura Narracyjna & Scenariusz Aktów"
+                >
+                  <BookOpen className="w-4 h-4 text-cyan-400 shrink-0 group-hover:scale-105 transition-transform" />
+                  {!isSidebarCollapsed && <span className="truncate font-medium">Narracja & Scenariusz</span>}
                 </button>
               )}
 
@@ -624,15 +651,15 @@ export function StudioLayout({
 
         {/* Recovery available banner */}
         {recoveryAvailable && onRestoreRecovery && (
-          <div className="bg-indigo-950/40 border-b border-indigo-800/40 px-4 py-1.5 flex items-center justify-between text-xs text-indigo-200 backdrop-blur-md shrink-0 animate-fadeIn">
+          <div className="bg-amber-950/30 border-b border-amber-800/40 px-4 py-1.5 flex items-center justify-between text-xs text-amber-200 backdrop-blur-md shrink-0 animate-fadeIn">
             <div className="flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Wykryto niezapisaną wersję projektu. Czy chcesz ją przywrócić?</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={onRestoreRecovery}
-                className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-medium transition-colors cursor-pointer"
+                className="px-2.5 py-0.5 bg-amber-400 hover:bg-amber-300 text-zinc-950 rounded text-xs font-bold transition-colors cursor-pointer"
               >
                 Przywróć
               </button>

@@ -387,11 +387,11 @@ export function AiChronologicalMergeModal({
   useEffect(() => {
     if (!isOpen || clips.length === 0) return;
     const currentClipsKey = clips.map(c => c.id).sort().join(',');
-    if (currentClipsKey !== prevClipsIdsRef.current) {
+    if (currentClipsKey !== prevClipsIdsRef.current || sequencedItems.length === 0) {
       prevClipsIdsRef.current = currentClipsKey;
       handleStartAnalysis();
     }
-  }, [isOpen, clips]);
+  }, [isOpen, clips, sequencedItems.length]);
 
   const handleUpdateItem = (clipId: string, updates: Partial<SequencedItem>) => {
     setSequencedItems(prev => prev.map(item => item.clipId === clipId ? { ...item, ...updates } : item));
