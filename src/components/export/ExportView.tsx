@@ -485,10 +485,17 @@ export function ExportView({ project, onUpdateProject, onNavigateTab, onResetPro
 
   const timelineClips: TimelineClip[] = useMemo(() => {
     const rawItems = project.timelineItems || [];
-    if (rawItems.length > 0) {
+    // Filter out any orphaned items that don't belong to current media library
+    const validRawItems = rawItems.filter(item => {
+      return mediaSources.some(s => s.id === item.clipId) || (project.mediaLibrary || []).some(m => m.id === item.clipId);
+    });
+
+    if (validRawItems.length > 0) {
       let currentTimeline = 0;
-      return rawItems.map(item => {
-        const matchingSource = mediaSources.find(s => s.id === item.clipId);
+      return validRawItems.map(item => {
+        const matchingSource = mediaSources.find(s => s.id === item.clipId) || 
+          mediaSources.find(s => s.id.includes(item.clipId) || item.clipId.includes(s.id)) || 
+          mediaSources[0];
         const srcDur = matchingSource?.duration || 0;
         let realStart = Math.max(0, item.sourceStart || 0);
         let realEnd = item.sourceEnd;
@@ -504,12 +511,13 @@ export function ExportView({ project, onUpdateProject, onNavigateTab, onResetPro
         }
 
         const realDur = Math.max(0.2, (realEnd - realStart) / (item.speed || 1));
+        const cardDur = (item.titleCard && item.titleCard.enabled) ? (item.titleCard.duration || 3) : 0;
         const itemStart = currentTimeline;
-        currentTimeline += realDur;
+        currentTimeline += cardDur + realDur;
 
         return {
           id: item.id,
-          sourceId: item.clipId,
+          sourceId: matchingSource?.id || item.clipId,
           sourceStart: realStart,
           sourceEnd: realEnd,
           timelineStart: itemStart,

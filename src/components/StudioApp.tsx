@@ -481,6 +481,44 @@ export function StudioApp() {
     setActiveTab('montage');
   }, [project.timelineItems, addTimelineItems, toast]);
 
+  const handleBatchMergeClips = useCallback((clipsToMerge: MediaClip[]) => {
+    if (!clipsToMerge || clipsToMerge.length === 0) return;
+    let start = 0;
+    const newItems: TimelineItem[] = clipsToMerge.map((clip, idx) => {
+      const duration = Math.max(0.5, clip.duration || 5);
+      const item: TimelineItem = {
+        id: `ti_merge_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        clipId: clip.id,
+        trackId: 'v1',
+        sourceStart: 0,
+        sourceEnd: duration,
+        timelineStart: Number(start.toFixed(2)),
+        duration: Number(duration.toFixed(2)),
+        speed: 1,
+        volume: 1,
+        fadeIn: idx === 0 ? 0.5 : 0,
+        fadeOut: idx === clipsToMerge.length - 1 ? 0.5 : 0,
+        muted: false,
+        scale: 1,
+        rotation: 0,
+        fitMode: 'fit',
+        transitionIn: idx === 0 ? 'dip_black' : 'dissolve',
+        transitionDuration: 0.5
+      };
+      start += duration;
+      return item;
+    });
+
+    pushState({
+      ...project,
+      timelineItems: newItems,
+      updatedAt: new Date().toISOString()
+    });
+
+    toast.showSuccess(`🎬 Pomyślnie ułożono i połączono ${newItems.length} filmów w jedną oś!`);
+    setActiveTab('export');
+  }, [project, pushState, toast]);
+
   const handleApplyQuickMerge = useCallback((
     items: { clip: MediaClip; trimStart: number; trimEnd: number; transition: TransitionType }[],
     introCard?: TitleCard,
@@ -750,7 +788,8 @@ export function StudioApp() {
         } as any
       });
 
-      start += clipDuration;
+      const cardDur = hasActiveTitleCard ? (itemTitleCard?.duration || 3.0) : 0;
+      start += cardDur + clipDuration;
     });
 
     // Update media library items with smart titles & categories
@@ -1184,6 +1223,7 @@ export function StudioApp() {
               }}
               onAddToTimeline={handleAddToTimeline}
               onBatchAddToTimeline={handleBatchAddToTimeline}
+              onBatchMergeClips={handleBatchMergeClips}
               onBatchRemoveClips={handleBatchRemoveMediaClips}
               onEditClip={(clip) => {
                 handleAddToTimeline(clip);

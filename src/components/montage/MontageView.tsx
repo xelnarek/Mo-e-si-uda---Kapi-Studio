@@ -60,8 +60,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 import type { ProjectState, TimelineItem, MediaClip, FitMode, TransitionType, TitleCard, AudioTrackItem } from '../../types/project';
-import { SmartPolishSubtitlesEngine } from '../../core/audio/smartPolishSubtitlesEngine';
 import { liveDialogueTranslator, type LiveDialogueCue } from '../../core/audio/liveDialogueTranslatorEngine';
+import { dedicatedPolishAiSubtitles, type PolishSubtitleCue, type VoiceActivityState } from '../../core/audio/dedicatedPolishAiSubtitlesEngine';
 import { urlRegistry } from '../../core/media/urlRegistry';
 import { thumbnailCache } from '../../core/media/thumbnailCache';
 import { resolveClipMediaUrl, resolveAudioTrackUrl } from '../../core/media/mediaResolver';
@@ -458,16 +458,28 @@ export function MontageView({
   // Polish Subtitles State, Live AI Dialogue Analyzer & Auto-Audio Sync
   const [isSubtitlesSyncing, setIsSubtitlesSyncing] = useState(false);
   const [liveCue, setLiveCue] = useState<LiveDialogueCue | null>(null);
+  const [polishCue, setPolishCue] = useState<PolishSubtitleCue | null>(null);
+  const [vadState, setVadState] = useState<VoiceActivityState>({ isSpeaking: false, energyLevel: 0, frequencyPeakHz: 0 });
   const isSubtitlesEnabled = project.settings?.subtitlesSettings?.enabled ?? true;
   const subtitlesCount = useMemo(() => {
     return (project.textLayers || []).filter(t => t.type === 'caption' || t.type === 'subtitle').length;
   }, [project.textLayers]);
 
-  // Subscribe to Live AI Dialogue Translator stream
+  // Subscribe to Dedicated Polish AI Subtitles & Live AI stream
   useEffect(() => {
     liveDialogueTranslator.setEnabled(isSubtitlesEnabled);
-    const unsub = liveDialogueTranslator.subscribe((cue) => {
+    dedicatedPolishAiSubtitles.setEnabled(isSubtitlesEnabled);
+
+    const unsubLive = liveDialogueTranslator.subscribe((cue) => {
       setLiveCue(cue);
+    });
+
+    const unsubPolish = dedicatedPolishAiSubtitles.subscribeCue((cue) => {
+      setPolishCue(cue);
+    });
+
+    const unsubVad = dedicatedPolishAiSubtitles.subscribeVad((vad) => {
+      setVadState(vad);
     });
 
     const unsubCommit = liveDialogueTranslator.onCommitSubtitle((newLayer) => {
@@ -488,7 +500,9 @@ export function MontageView({
     });
 
     return () => {
-      unsub();
+      unsubLive();
+      unsubPolish();
+      unsubVad();
       unsubCommit();
     };
   }, [isSubtitlesEnabled, onUpdateProject]);
@@ -567,7 +581,7 @@ export function MontageView({
       toast.showInfo('🎙️ AI analizuje ścieżkę dźwiękową filmu i tłumaczy dialogi na język polski...');
     }
     try {
-      const res = await liveDialogueTranslator.autoAnalyzeProjectAudio(project);
+      const res = await dedicatedPolishAiSubtitles.generateFullProjectSubtitles(project);
       if (onUpdateProject) {
         onUpdateProject(prev => ({
           ...prev,
@@ -584,8 +598,8 @@ export function MontageView({
           }
         }));
       }
-      if (res.totalSegments > 0) {
-        toast.showSuccess(`✨ AI przetłumaczyło i zsynchronizowało ${res.totalSegments} kwestii dialogowych PL!`);
+      if (res.totalCount > 0) {
+        toast.showSuccess(`✨ AI rozpoznało i zsynchronizowało ${res.totalCount} polskich kwestii dialogowych!`);
       } else {
         if (!isBackground) {
           toast.showInfo('W ścieżce dźwiękowej filmu nie wykryto mowy ludzkiej (tylko muzyka lub cisza).');
@@ -1053,6 +1067,7 @@ export function MontageView({
 
       currentTimeRef.current = calculatedTime;
       liveDialogueTranslator.updatePlayheadTime(calculatedTime, project.textLayers);
+      dedicatedPolishAiSubtitles.updatePlaybackTime(calculatedTime, project);
 
       // Continuous periodic audio sync (~150ms) to ensure background music & voiceovers enter/exit seamlessly
       if (now - lastAudioSyncTickRef.current >= 150) {
@@ -1171,6 +1186,7 @@ export function MontageView({
       if (videoRef.current && activeClip?.type === 'video') {
         videoRef.current.muted = isMuted || Boolean(activeTimelineItem?.muted);
         liveAudioEngine.connectVideoElement(videoRef.current);
+        dedicatedPolishAiSubtitles.attachVideoElement(videoRef.current);
         videoRef.current.play().catch(() => {});
       }
       liveAudioEngine.syncAudioTracks(
@@ -1191,6 +1207,7 @@ export function MontageView({
     setCurrentTime(0);
     liveDialogueTranslator.stop();
     liveDialogueTranslator.clearActiveCue();
+    dedicatedPolishAiSubtitles.clearActiveCue();
     if (videoRef.current) videoRef.current.currentTime = 0;
     liveAudioEngine.pauseAll();
   };
@@ -1200,8 +1217,10 @@ export function MontageView({
     currentTimeRef.current = clamped;
     setCurrentTime(clamped);
     liveDialogueTranslator.updatePlayheadTime(clamped, project.textLayers);
+    dedicatedPolishAiSubtitles.updatePlaybackTime(clamped, project);
     if (!isPlaying) {
       liveDialogueTranslator.clearActiveCue();
+      dedicatedPolishAiSubtitles.clearActiveCue();
     }
 
     // Immediately seek HTML5 video element on manual scrubbing
@@ -1843,26 +1862,40 @@ export function MontageView({
                   </div>
                 ))}
 
-              {/* Live AI Dialogue & Translation Banner (When speech is detected during playback) */}
-              {isSubtitlesEnabled && liveCue && !(project.textLayers || []).some(t => 
+              {/* Live Polish Voice Activity Detection (VAD) Badge on Stage */}
+              {isPlaying && vadState.isSpeaking && (
+                <div className="absolute top-3 right-3 z-30 flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-950/85 border border-emerald-500/50 backdrop-blur-md text-[10px] font-mono text-emerald-300 shadow-xl animate-in fade-in select-none pointer-events-none">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-semibold tracking-wide">MOWA WYKRYTA (PL)</span>
+                  <span className="text-[9px] text-emerald-400/80 font-mono">
+                    {Math.round(vadState.energyLevel * 100)}%
+                  </span>
+                </div>
+              )}
+
+              {/* Dedicated Polish AI Subtitles & Live Dialogue Display */}
+              {isSubtitlesEnabled && (polishCue || liveCue) && !(project.textLayers || []).some(t => 
                 (t.type === 'caption' || t.type === 'subtitle') &&
                 currentTime >= t.timelineStart && currentTime < t.timelineStart + t.duration
               ) && (
                 <div 
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none transition-all duration-150 px-4 py-2 rounded-2xl z-30 font-sans select-none animate-in fade-in zoom-in-95"
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none transition-all duration-150 px-4 py-2.5 rounded-2xl z-30 font-sans select-none animate-in fade-in zoom-in-95"
                   style={{ 
                     left: '50%', 
                     top: '84%',
-                    background: 'rgba(9, 9, 13, 0.88)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(0, 229, 204, 0.45)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 229, 204, 0.25)',
+                    background: 'rgba(9, 11, 17, 0.90)',
+                    backdropFilter: 'blur(14px)',
+                    border: '1px solid rgba(0, 229, 204, 0.5)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 229, 204, 0.25)',
                     maxWidth: '88%'
                   }}
                 >
                   <div className="flex items-center justify-center gap-1.5 mb-1 text-[9px] font-mono text-[#00e5cc] tracking-wider uppercase font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#00e5cc] animate-pulse" />
-                    <span>AI DIALOG & TŁUMACZ PL</span>
+                    <span>🇵🇱 DEDYKOWANE NAPISY AI (PL)</span>
+                    {polishCue?.speaker && (
+                      <span className="text-amber-300 ml-1">[{polishCue.speaker}]</span>
+                    )}
                   </div>
                   <span 
                     className="text-white font-extrabold tracking-wide"
@@ -1871,7 +1904,7 @@ export function MontageView({
                       textShadow: '0 2px 12px rgba(0,0,0,0.95), 0 0 8px rgba(0,229,204,0.35)'
                     }}
                   >
-                    {liveCue.translatedText || liveCue.originalText}
+                    {polishCue?.text || liveCue?.translatedText || liveCue?.originalText}
                   </span>
                 </div>
               )}
@@ -2043,6 +2076,21 @@ export function MontageView({
                   </button>
                 ))}
               </div>
+
+              {/* Polish AI Subtitles Toggle & Status */}
+              <button
+                type="button"
+                onClick={handleTogglePolishSubtitles}
+                className={`px-2.5 py-1 rounded-lg border text-xs font-mono flex items-center gap-1.5 cursor-pointer transition ${
+                  isSubtitlesEnabled
+                    ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300 font-semibold shadow-xs'
+                    : 'bg-[#22222a] border-[#26262b] text-zinc-400 hover:text-white'
+                }`}
+                title={isSubtitlesEnabled ? 'Dedykowane polskie napisy AI włączone (kliknij aby ukryć)' : 'Włącz polskie napisy AI'}
+              >
+                <MessageSquare className={`w-3.5 h-3.5 ${isSubtitlesEnabled ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                <span>PL NAPISY{isSubtitlesEnabled ? ' ON' : ' OFF'}</span>
+              </button>
 
               {/* Color Studio Button */}
               <button

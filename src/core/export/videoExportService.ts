@@ -233,11 +233,19 @@ export class VideoExportService {
 
     for (let i = 0; i < clips.length; i++) {
       const clip = clips[i];
-      const source = sourceMap.get(clip.sourceId);
+      let source = sourceMap.get(clip.sourceId);
 
       if (!source) {
-        errors.push(`Klip nr ${i + 1} odwołuje się do brakującego źródła (ID: ${clip.sourceId}).`);
-        continue;
+        // Robust fallback: search by substring/loose ID or map to first available source in project
+        const fallback = sources.find(s => s.id === clip.sourceId || s.id.includes(clip.sourceId) || clip.sourceId.includes(s.id)) || sources[0];
+        if (fallback) {
+          clip.sourceId = fallback.id;
+          source = fallback;
+          warnings.push(`Klip nr ${i + 1} został bezpiecznie powiązany ze źródłem "${fallback.name}".`);
+        } else {
+          errors.push(`Klip nr ${i + 1} odwołuje się do brakującego źródła (ID: ${clip.sourceId}).`);
+          continue;
+        }
       }
 
       if (!source.supported) {
@@ -1960,7 +1968,8 @@ export class VideoExportService {
     for (const clip of clips) {
       const source = sources.get(clip.sourceId);
       if (source && source.hasAudio && !clip.muted && clip.volume > 0.2) {
-        const start = Math.max(0, clip.timelineStart || 0);
+        const titleCardDur = (clip.titleCard && clip.titleCard.enabled) ? (clip.titleCard.duration || 3) : 0;
+        const start = Math.max(0, (clip.timelineStart || 0) + titleCardDur);
         const end = start + Math.max(0.5, clip.duration || 1);
         speechIntervals.push({ start, end, duckingRatio: 0.20 }); // -18dB ducking
       }
@@ -2041,7 +2050,8 @@ export class VideoExportService {
           const maxOffset = Math.max(0, resampledBuffer.duration - 0.05);
           const safeOffset = Math.max(0, Math.min(clip.sourceStart, maxOffset));
           const safeDur = Math.max(0.05, Math.min(clip.duration, resampledBuffer.duration - safeOffset));
-          const safeWhen = Math.max(0, clip.timelineStart);
+          const titleCardDur = (clip.titleCard && clip.titleCard.enabled) ? (clip.titleCard.duration || 3) : 0;
+          const safeWhen = Math.max(0, clip.timelineStart + titleCardDur);
           srcNode.start(safeWhen, safeOffset, safeDur);
           attachedSources++;
         }

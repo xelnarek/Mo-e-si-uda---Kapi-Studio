@@ -415,7 +415,10 @@ export class FrameCompositor {
 
     // 1. IV.1 Smart Ambient Background Blur: Eliminates black bars on vertical/horizontal mixed clips
     const needsSmartBackground = (fitMode === 'fit' || fitMode === 'original') && (aspectDiff > 0.02);
-    if (needsSmartBackground) {
+    const isVideoEl = typeof HTMLVideoElement !== 'undefined' && media instanceof HTMLVideoElement;
+    const isMediaReady = !isVideoEl || (media.readyState >= 2 && media.videoWidth > 0 && !media.error);
+
+    if (needsSmartBackground && isMediaReady) {
       ctx.save();
       ctx.filter = 'blur(35px) brightness(0.42) contrast(1.15)';
       let bgW = targetWidth;
@@ -429,7 +432,13 @@ export class FrameCompositor {
       }
       const bgX = (targetWidth - bgW) / 2;
       const bgY = (targetHeight - bgH) / 2;
-      ctx.drawImage(media, bgX, bgY, bgW, bgH);
+      try {
+        ctx.drawImage(media, bgX, bgY, bgW, bgH);
+      } catch (drawBgErr) {
+        // Fallback to solid dark vignette wash if background blit fails
+        ctx.fillStyle = '#0f1117';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+      }
       
       // Semi-transparent dark wash for high contrast against sharp foreground
       ctx.filter = 'none';
@@ -519,7 +528,18 @@ export class FrameCompositor {
       ctx.shadowOffsetY = 6;
     }
 
-    ctx.drawImage(media, sX, sY, sW, sH, -renderW / 2, -renderH / 2, renderW, renderH);
+    if (isMediaReady) {
+      try {
+        ctx.drawImage(media, sX, sY, sW, sH, -renderW / 2, -renderH / 2, renderW, renderH);
+      } catch (drawErr) {
+        // Fallback to elegant frame rectangle if drawImage fails
+        ctx.fillStyle = '#181b22';
+        ctx.fillRect(-renderW / 2, -renderH / 2, renderW, renderH);
+      }
+    } else {
+      ctx.fillStyle = '#12151b';
+      ctx.fillRect(-renderW / 2, -renderH / 2, renderW, renderH);
+    }
     ctx.restore();
 
     // Vignette overlay

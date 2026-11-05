@@ -54,6 +54,7 @@ interface MediaManagerProps {
   onRemoveClip: (id: string) => void;
   onAddToTimeline: (clip: MediaClip, customRange?: { start: number; end: number }) => void;
   onBatchAddToTimeline?: (clips: MediaClip[]) => void;
+  onBatchMergeClips?: (clips: MediaClip[]) => void;
   onBatchRemoveClips?: (ids: string[]) => void;
   onRelinkSource?: (clipId: string, file: File) => void;
   onVerifyDurations?: () => Promise<{ checked: number; updated: number; details: { name: string; oldDuration: number; newDuration: number }[] }>;
@@ -76,6 +77,7 @@ export function MediaManager({
   onRemoveClip, 
   onAddToTimeline,
   onBatchAddToTimeline,
+  onBatchMergeClips,
   onBatchRemoveClips,
   onRelinkSource,
   onVerifyDurations,
@@ -857,7 +859,9 @@ export function MediaManager({
       return timeA - timeB;
     });
 
-    if (onBatchAddToTimeline) {
+    if (onBatchMergeClips) {
+      onBatchMergeClips(sorted);
+    } else if (onBatchAddToTimeline) {
       onBatchAddToTimeline(sorted);
     } else {
       sorted.forEach(clip => onAddToTimeline(clip));
